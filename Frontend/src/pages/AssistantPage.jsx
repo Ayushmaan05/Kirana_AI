@@ -1,15 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Send, Mic, MicOff, Bot, User, CheckCircle2, X, RefreshCw, Sparkles } from 'lucide-react';
 import { sendMessage, transcribeAudio } from '../services/assistantService.js';
 import { addTransaction } from '../services/dashboardService.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { useApp } from '../context/AppContext.jsx';
-import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
-import Badge from '../components/common/Badge.jsx';
 import apiClient from '../services/apiClient.js';
 
 const SUGGESTIONS = [
+  'Sold 5 kg rice for ₹300 and 2 packets of biscuits for ₹40.',
   'Sold 5 kg rice for ₹250 cash',
   'Ramesh ko ₹500 udhaar diya',
   'Show today\'s sales summary',
@@ -49,7 +49,6 @@ function MessageBubble({ msg }) {
         {msg.transaction && msg.transaction.status === 'pending_confirmation' && (
           <TransactionConfirmCard
             transaction={msg.transaction}
-            onConfirm={msg.onConfirm}
             onDismiss={msg.onDismiss}
           />
         )}
@@ -60,13 +59,30 @@ function MessageBubble({ msg }) {
   );
 }
 
-function TransactionConfirmCard({ transaction, onConfirm, onDismiss }) {
+function TransactionConfirmCard({ transaction, onDismiss }) {
   const [status, setStatus] = useState('pending'); // pending | confirming | confirmed | dismissed
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(() => ({
+    ...transaction,
+    items: transaction.items?.map(item => ({ ...item })) || [],
+  }));
+  const total = draft.items.length
+    ? draft.items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+    : Number(draft.amount) || 0;
+
+  function updateItem(index, field, value) {
+    setDraft(current => ({
+      ...current,
+      items: current.items.map((item, itemIndex) => itemIndex === index
+        ? { ...item, [field]: field === 'amount' || field === 'quantity' ? (value === '' ? '' : Number(value)) : value }
+        : item),
+    }));
+  }
 
   async function handleConfirm() {
     setStatus('confirming');
     try {
-      await addTransaction(transaction);
+      await addTransaction({ ...draft, amount: total });
       setStatus('confirmed');
     } catch {
       setStatus('pending');
@@ -85,29 +101,49 @@ function TransactionConfirmCard({ transaction, onConfirm, onDismiss }) {
     <div className="card p-3 border-emerald-200" style={{ background: '#f0fdf4', minWidth: 240 }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Confirm Entry</span>
-        <button onClick={onDismiss} className="text-slate-400 hover:text-slate-600">
-          <X size={14} />
-        </button>
+        <div className="flex items-center gap-2">
+          {draft.items.length > 0 && <button type="button" onClick={() => setEditing(value => !value)} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800">{editing ? 'Done editing' : 'Edit'}</button>}
+          <button type="button" onClick={onDismiss} className="text-slate-400 hover:text-slate-600" aria-label="Cancel this entry"><X size={14} /></button>
+        </div>
       </div>
       <div className="space-y-1 text-sm mb-3">
+        {draft.items.length > 0 && (
+          <div className="mb-3 divide-y divide-emerald-100 rounded-lg border border-emerald-100 bg-white/70 px-3">
+            {draft.items.map((item, index) => editing ? (
+              <div key={`${item.name}-${index}`} className="grid grid-cols-2 gap-2 py-2">
+                <label className="text-[10px] text-slate-500">Item<input className="input mt-1 !px-2 !py-1 text-xs" value={item.name} onChange={event => updateItem(index, 'name', event.target.value)} aria-label={`Item ${index + 1} name`} /></label>
+                <label className="text-[10px] text-slate-500">Amount<input className="input mt-1 !px-2 !py-1 text-xs" type="number" min="0" step="0.01" value={item.amount} onChange={event => updateItem(index, 'amount', event.target.value)} aria-label={`Item ${index + 1} amount`} /></label>
+                <label className="text-[10px] text-slate-500">Quantity<input className="input mt-1 !px-2 !py-1 text-xs" type="number" min="0" step="0.01" value={item.quantity} onChange={event => updateItem(index, 'quantity', event.target.value)} aria-label={`Item ${index + 1} quantity`} /></label>
+                <label className="text-[10px] text-slate-500">Unit<input className="input mt-1 !px-2 !py-1 text-xs" value={item.unit} onChange={event => updateItem(index, 'unit', event.target.value)} aria-label={`Item ${index + 1} unit`} /></label>
+              </div>
+            ) : (
+              <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 py-2 text-xs">
+                <span className="text-slate-600">{item.quantity} {item.unit} {item.name}</span>
+                <span className="font-semibold text-slate-800">{formatCurrency(item.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-slate-500">Type</span>
-          <span className="font-semibold text-slate-700 capitalize">{transaction.type?.replace(/_/g, ' ')}</span>
+          <span className="font-semibold text-slate-700 capitalize">{draft.type?.replace(/_/g, ' ')}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-slate-500">Amount</span>
-          <span className="font-bold text-emerald-700">{formatCurrency(transaction.amount)}</span>
+          {editing && !draft.items.length
+            ? <input className="input !w-28 !px-2 !py-1 text-right text-xs" type="number" min="0" step="0.01" value={draft.amount} onChange={event => setDraft(current => ({ ...current, amount: event.target.value }))} aria-label="Transaction amount" />
+            : <span className="font-bold text-emerald-700">{formatCurrency(total)}</span>}
         </div>
-        {transaction.customer_name && (
+        {draft.customer_name && (
           <div className="flex justify-between">
             <span className="text-slate-500">Customer</span>
-            <span className="font-semibold text-slate-700">{transaction.customer_name}</span>
+            <span className="font-semibold text-slate-700">{draft.customer_name}</span>
           </div>
         )}
-        {transaction.payment_mode && (
+        {draft.payment_mode && (
           <div className="flex justify-between">
             <span className="text-slate-500">Mode</span>
-            <span className="font-semibold text-slate-700 capitalize">{transaction.payment_mode}</span>
+            <span className="font-semibold text-slate-700 capitalize">{draft.payment_mode}</span>
           </div>
         )}
       </div>
@@ -123,11 +159,14 @@ function TransactionConfirmCard({ transaction, onConfirm, onDismiss }) {
           <><CheckCircle2 size={13} /> Confirm & Save</>
         )}
       </button>
+      <button type="button" onClick={onDismiss} disabled={status === 'confirming'} className="mt-2 w-full py-1 text-xs font-medium text-slate-500 hover:text-slate-700">Cancel entry</button>
     </div>
   );
 }
 
 export default function AssistantPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
@@ -145,6 +184,13 @@ export default function AssistantPage() {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const { addNotification } = useApp();
+
+  useEffect(() => {
+    const draftMessage = location.state?.draftMessage;
+    if (!draftMessage) return;
+    setInput(draftMessage);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key, location.pathname, location.state, navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -172,13 +218,12 @@ export default function AssistantPage() {
         text: response.reply,
         time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
         transaction: response.transaction,
-        onConfirm: () => {},
         onDismiss: () => setMessages(prev =>
           prev.map(m => m.id === aiMsgId ? { ...m, transaction: null } : m)
         ),
       };
       setMessages(prev => [...prev, aiMsg]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, {
         id: Date.now() + 2,
         role: 'ai',
@@ -242,7 +287,7 @@ export default function AssistantPage() {
             </span>
           </div>
           <p className="text-xs text-slate-400">
-            {apiClient.isDemoMode ? '🎭 Demo Mode — Smart mock responses' : 'Connected to backend'}
+            {apiClient.isDemoMode ? 'Demo mode · Replies and record previews use mock data.' : 'Connected to backend'}
           </p>
         </div>
       </div>
@@ -293,13 +338,14 @@ export default function AssistantPage() {
         {/* Mic */}
         <button
           onClick={toggleRecording}
-          disabled={loading}
+          disabled={loading || apiClient.isDemoMode}
           className={`btn btn-icon flex-shrink-0 transition-all ${recording ? 'animate-pulse-ring' : ''}`}
           style={{
             background: recording ? '#fef2f2' : 'var(--color-primary-light)',
             color: recording ? 'var(--color-error)' : 'var(--color-primary)',
           }}
-          aria-label={recording ? 'Stop recording' : 'Start voice input'}
+          aria-label={apiClient.isDemoMode ? 'Voice transcription unavailable in demo mode' : recording ? 'Stop recording' : 'Start voice input'}
+          title={apiClient.isDemoMode ? 'Voice transcription is unavailable in demo mode' : undefined}
         >
           {recording ? <MicOff size={18} /> : <Mic size={18} />}
         </button>
@@ -327,6 +373,7 @@ export default function AssistantPage() {
           <Send size={16} />
         </button>
       </div>
+      {apiClient.isDemoMode && <p className="px-1 pt-1 text-xs text-slate-400">Voice transcription is unavailable in demo mode. Type or choose an example to preview a record.</p>}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Download, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getTransactions } from '../services/dashboardService.js';
-import { getTransactionLabel, getTransactionColor, TRANSACTION_TYPES } from '../models/transactionModel.js';
+import { TRANSACTION_TYPES } from '../models/transactionModel.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { formatDate } from '../utils/formatDate.js';
 import Badge from '../components/common/Badge.jsx';
@@ -118,10 +118,11 @@ export default function SalesPage() {
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Description</th>
-                  <th>Type</th>
-                  <th>Mode</th>
+                  <th>Item</th>
+                  <th>Quantity</th>
                   <th className="text-right">Amount</th>
+                  <th>Payment</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,23 +137,18 @@ export default function SalesPage() {
                       {formatDate(txn.createdAt, 'medium')}
                     </td>
                     <td>
-                      <p className="font-medium text-slate-700">{txn.description || '—'}</p>
+                      <p className="font-medium text-slate-700">{txn.items?.map(item => item.name).filter(Boolean).join(', ') || txn.description || '—'}</p>
                       {txn.customerName && <p className="text-xs text-slate-400">{txn.customerName}</p>}
                     </td>
-                    <td>
-                      <Badge variant={getTransactionColor(txn.type)}>
-                        {getTransactionLabel(txn.type)}
-                      </Badge>
-                    </td>
-                    <td>
-                      <span className="badge badge-gray uppercase text-xs">{txn.paymentMode || 'cash'}</span>
-                    </td>
+                    <td className="text-slate-600">{txn.items?.length ? txn.items.map(item => `${item.quantity} ${item.unit || ''}`.trim()).join(', ') : '—'}</td>
                     <td className="text-right font-bold">
                       <span style={{ color: ['sale','payment_received'].includes(txn.type) ? '#065f46' : '#991b1b' }}>
                         {['sale','payment_received'].includes(txn.type) ? '+' : '-'}
                         {formatCurrency(txn.amount)}
                       </span>
                     </td>
+                    <td><span className="badge badge-gray uppercase text-xs">{txn.paymentMode || 'cash'}</span></td>
+                    <td><Badge variant={txn.status === 'confirmed' ? 'success' : 'warning'}>{txn.status === 'confirmed' ? 'Recorded' : txn.status}</Badge></td>
                   </motion.tr>
                 ))}
               </tbody>

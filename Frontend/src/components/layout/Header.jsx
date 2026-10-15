@@ -6,9 +6,9 @@ import { useApp } from '../../context/AppContext.jsx';
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
   '/assistant': 'AI Assistant',
-  '/sales':     'Sales Ledger',
+  '/sales':     'Sales & Ledger',
   '/inventory': 'Inventory',
-  '/customers': 'Customers & Udhaar',
+  '/customers': 'Customer Credit',
   '/reports':   'Reports',
   '/settings':  'Settings',
 };

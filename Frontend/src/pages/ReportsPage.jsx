@@ -66,6 +66,10 @@ export default function ReportsPage() {
         </button>
       </div>
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <strong>Demo data.</strong> These sample figures are for preview only and are not your shop’s actual sales or GST records.
+      </div>
+
       {/* Tab navigation */}
       <div className="card p-1.5 flex gap-1 overflow-x-auto no-scrollbar">
         {TABS.map(t => (

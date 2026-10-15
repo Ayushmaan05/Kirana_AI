@@ -2,14 +2,14 @@ import { normalizeTransaction } from '../models/transactionModel.js';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 const MOCK_TRANSACTIONS = [
-  { id: '1', type: 'sale', description: 'Aata, Daal, Chawal', amount: 480, payment_mode: 'cash', customer_name: null, created_at: new Date().toISOString() },
+  { id: '1', type: 'sale', description: 'Aata, Daal, Chawal', items: [{ name: 'Aata', quantity: 2, unit: 'kg' }, { name: 'Daal', quantity: 1, unit: 'kg' }, { name: 'Chawal', quantity: 2, unit: 'kg' }], amount: 480, payment_mode: 'cash', customer_name: null, created_at: new Date().toISOString() },
   { id: '2', type: 'udhaar_given', description: 'Grocery - Ramesh Kumar', amount: 350, payment_mode: 'credit', customer_name: 'Ramesh Kumar', created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: '3', type: 'sale', description: 'Maggi, Biscuit, Cold Drink', amount: 120, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 7200000).toISOString() },
+  { id: '3', type: 'sale', description: 'Maggi, Biscuit, Cold Drink', items: [{ name: 'Maggi', quantity: 2, unit: 'pkt' }, { name: 'Biscuit', quantity: 3, unit: 'pkt' }, { name: 'Cold Drink', quantity: 1, unit: 'btl' }], amount: 120, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 7200000).toISOString() },
   { id: '4', type: 'purchase', description: 'Stock purchase - Maggi 5 peti', amount: 1200, payment_mode: 'cash', customer_name: 'Ramesh Kumar', created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: '5', type: 'sale', description: 'Amul Butter, Bread', amount: 110, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 90000000).toISOString() },
+  { id: '5', type: 'sale', description: 'Amul Butter, Bread', items: [{ name: 'Amul Butter', quantity: 1, unit: 'pkt' }, { name: 'Bread', quantity: 1, unit: 'loaf' }], amount: 110, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 90000000).toISOString() },
   { id: '6', type: 'payment_received', description: 'Udhaar payment from Suresh', amount: 500, payment_mode: 'cash', customer_name: 'Suresh Sharma', created_at: new Date(Date.now() - 172800000).toISOString() },
   { id: '7', type: 'expense', description: 'Shop rent', amount: 5000, payment_mode: 'bank', customer_name: null, created_at: new Date(Date.now() - 259200000).toISOString() },
-  { id: '8', type: 'sale', description: 'Pooja Samagri', amount: 750, payment_mode: 'cash', customer_name: 'Priya Devi', created_at: new Date(Date.now() - 300000000).toISOString() },
+  { id: '8', type: 'sale', description: 'Pooja Samagri', items: [{ name: 'Pooja Samagri', quantity: 3, unit: 'set' }], amount: 750, payment_mode: 'cash', customer_name: 'Priya Devi', created_at: new Date(Date.now() - 300000000).toISOString() },
 ];
 
 const MOCK_WEEKLY = [
@@ -24,6 +24,8 @@ const MOCK_WEEKLY = [
 
 const MOCK_DASHBOARD = {
   todaySales:        4760,
+  todayRevenue:      3560,
+  todayTransactions: 32,
   todayExpenses:     1200,
   outstandingCredit: 8350,
   totalInventoryValue: 45000,
@@ -48,7 +50,18 @@ import apiClient from './apiClient.js';
 export async function getDashboardData() {
   if (apiClient.isDemoMode) {
     await delay(600);
-    return MOCK_DASHBOARD;
+    const today = new Date().toDateString();
+    const todayTransactions = MOCK_TRANSACTIONS.filter(txn => new Date(txn.created_at).toDateString() === today);
+    const todaySales = todayTransactions.filter(txn => txn.type === 'sale').reduce((sum, txn) => sum + txn.amount, 0);
+    const todayExpenses = todayTransactions.filter(txn => txn.type === 'expense').reduce((sum, txn) => sum + txn.amount, 0);
+    return {
+      ...MOCK_DASHBOARD,
+      todaySales,
+      todayExpenses,
+      todayRevenue: todaySales - todayExpenses,
+      todayTransactions: todayTransactions.length,
+      recentTransactions: MOCK_TRANSACTIONS.slice(0, 5).map(normalizeTransaction),
+    };
   }
   return apiClient.get('/api/dashboard');
 }
@@ -75,7 +88,19 @@ export async function getTransactions(filters = {}) {
 export async function addTransaction(data) {
   if (apiClient.isDemoMode) {
     await delay(800);
-    return { ...data, id: String(Date.now()), created_at: new Date().toISOString(), status: 'confirmed' };
+    const saved = normalizeTransaction({
+      ...data,
+      id: String(Date.now()),
+      created_at: new Date().toISOString(),
+      status: 'confirmed',
+    });
+    MOCK_TRANSACTIONS.unshift({
+      ...saved,
+      created_at: saved.createdAt.toISOString(),
+      payment_mode: saved.paymentMode,
+      customer_name: saved.customerName,
+    });
+    return saved;
   }
   return apiClient.post('/api/transactions', data);
 }

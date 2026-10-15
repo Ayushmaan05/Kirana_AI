@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, AlertTriangle, Package, Edit2, ChevronDown } from 'lucide-react';
-import { getInventory, addProduct, adjustStock } from '../services/inventoryService.js';
+import { Search, Plus, AlertTriangle, Package, Edit2 } from 'lucide-react';
+import { getInventory, addProduct, updateProduct } from '../services/inventoryService.js';
 import { getStockStatusLabel, getStockStatusColor, STOCK_STATUS } from '../models/productModel.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import Badge from '../components/common/Badge.jsx';
@@ -14,8 +14,16 @@ import { useApp } from '../context/AppContext.jsx';
 
 const CATEGORIES = ['All', 'Staples', 'Snacks', 'Dairy', 'Beverages', 'Personal Care', 'General'];
 
-function AddProductForm({ onSave, onClose }) {
-  const [form, setForm] = useState({ name: '', category: 'General', quantity: '', unit: 'pcs', selling_price: '', purchase_price: '', low_stock_threshold: 10 });
+function AddProductForm({ onSave, onClose, product = null }) {
+  const [form, setForm] = useState(() => product ? {
+    name: product.name || '',
+    category: product.category || 'General',
+    quantity: product.quantity ?? '',
+    unit: product.unit || 'pcs',
+    selling_price: product.sellingPrice ?? product.selling_price ?? '',
+    purchase_price: product.purchasePrice ?? product.purchase_price ?? '',
+    low_stock_threshold: product.lowStockThreshold ?? product.low_stock_threshold ?? 10,
+  } : { name: '', category: 'General', quantity: '', unit: 'pcs', selling_price: '', purchase_price: '', low_stock_threshold: 10 });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -31,8 +39,9 @@ function AddProductForm({ onSave, onClose }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true);
     try {
-      const product = await addProduct({ ...form, quantity: Number(form.quantity), selling_price: Number(form.selling_price), purchase_price: Number(form.purchase_price) });
-      onSave(product);
+      const payload = { ...form, quantity: Number(form.quantity), selling_price: Number(form.selling_price), purchase_price: Number(form.purchase_price) };
+      const savedProduct = product ? await updateProduct(product.id, payload) : await addProduct(payload);
+      onSave(savedProduct);
     } finally {
       setSaving(false);
     }
@@ -62,7 +71,7 @@ function AddProductForm({ onSave, onClose }) {
       </div>
       <div className="flex gap-2 pt-2">
         <Button variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-        <Button variant="primary" loading={saving} onClick={handleSave} className="flex-1">Add Product</Button>
+        <Button variant="primary" loading={saving} onClick={handleSave} className="flex-1">{product ? 'Save Changes' : 'Add Product'}</Button>
       </div>
     </div>
   );
@@ -75,6 +84,7 @@ export default function InventoryPage() {
   const [category, setCategory] = useState('All');
   const [showLowOnly, setShowLowOnly] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const { addNotification } = useApp();
 
   useEffect(() => {
@@ -101,10 +111,13 @@ export default function InventoryPage() {
 
   const lowStockCount = products.filter(p => p.stockStatus !== STOCK_STATUS.IN_STOCK).length;
 
-  function handleProductAdded(product) {
-    setProducts(prev => [product, ...prev]);
+  function handleProductSaved(product) {
+    setProducts(prev => editingProduct
+      ? prev.map(existing => existing.id === product.id ? product : existing)
+      : [product, ...prev]);
     setShowAddModal(false);
-    addNotification({ type: 'success', title: 'Product Added', message: `${product.name} added to inventory.` });
+    addNotification({ type: 'success', title: editingProduct ? 'Product Updated' : 'Product Added', message: `${product.name} ${editingProduct ? 'updated' : 'added to'} inventory.` });
+    setEditingProduct(null);
   }
 
   return (
@@ -162,8 +175,13 @@ export default function InventoryPage() {
               className="card p-4 hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary-light)' }}>
-                  <Package size={18} style={{ color: 'var(--color-primary)' }} />
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-primary-light)' }}>
+                    <Package size={18} style={{ color: 'var(--color-primary)' }} />
+                  </div>
+                  <button type="button" onClick={() => { setEditingProduct(product); setShowAddModal(true); }} className="btn btn-ghost btn-icon text-slate-400 hover:text-emerald-700" aria-label={`Edit ${product.name}`} title={`Edit ${product.name}`}>
+                    <Edit2 size={15} />
+                  </button>
                 </div>
                 <Badge variant={getStockStatusColor(product.stockStatus)} dot>
                   {getStockStatusLabel(product.stockStatus)}
@@ -211,8 +229,8 @@ export default function InventoryPage() {
       )}
 
       {/* Add Product Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Product" size="md">
-        <AddProductForm onSave={handleProductAdded} onClose={() => setShowAddModal(false)} />
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setEditingProduct(null); }} title={editingProduct ? 'Edit Product' : 'Add New Product'} size="md">
+        <AddProductForm key={editingProduct?.id || 'new-product'} product={editingProduct} onSave={handleProductSaved} onClose={() => { setShowAddModal(false); setEditingProduct(null); }} />
       </Modal>
     </div>
   );

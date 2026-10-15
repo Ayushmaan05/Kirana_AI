@@ -8,8 +8,25 @@ function parseMockInput(text) {
 
   // Detect intent
   if (/bech|sold|sale|bikri|diya(?! udhar)/.test(lower)) {
-    const amountMatch = text.match(/₹?\s*(\d+)/);
-    const amount = amountMatch ? parseInt(amountMatch[1]) : null;
+    const itemMatches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g|ltr|litre|liter|packet(?:s)?|pkt|pcs|piece(?:s)?)?\s*([a-z][a-z0-9 -]*?)\s+(?:for|at)\s*(?:\u20b9|rs\.?\s*)?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)/gi)];
+    const items = itemMatches.map(([, quantity, unit = 'pcs', name, amount]) => ({
+      name: name.trim().replace(/^of\s+/i, '').replace(/\s+/g, ' '),
+      quantity: Number(quantity),
+      unit: unit || 'pcs',
+      amount: Number(amount.replace(/,/g, '')),
+    }));
+    if (items.length) {
+      const amount = items.reduce((sum, item) => sum + item.amount, 0);
+      const payment_mode = lower.includes('upi') ? 'upi' : 'cash';
+      return {
+        intent: 'SALE',
+        extracted: { amount, payment_mode, items },
+        reply: `I understood ${items.length} sale items totalling ₹${amount}. Please review the record before saving. (Demo response)`,
+        transaction: { type: 'sale', amount, payment_mode, items, description: text, status: 'pending_confirmation' },
+      };
+    }
+    const amountMatch = text.match(/₹?\s*(\d[\d,]*(?:\.\d{1,2})?)/);
+    const amount = amountMatch ? Number(amountMatch[1].replace(/,/g, '')) : null;
     return {
       intent: 'SALE',
       extracted: { amount, payment_mode: lower.includes('upi') ? 'upi' : 'cash' },
@@ -24,8 +41,8 @@ function parseMockInput(text) {
   }
 
   if (/udhar|udhaar|credit|baaki|baki/.test(lower)) {
-    const amountMatch = text.match(/₹?\s*(\d+)/);
-    const amount = amountMatch ? parseInt(amountMatch[1]) : null;
+    const amountMatch = text.match(/₹?\s*(\d[\d,]*(?:\.\d{1,2})?)/);
+    const amount = amountMatch ? Number(amountMatch[1].replace(/,/g, '')) : null;
     const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+)\s*(ko|ne|ka)?/);
     const name = nameMatch ? nameMatch[1] : null;
     return {
@@ -40,8 +57,8 @@ function parseMockInput(text) {
   }
 
   if (/kharcha|expense|rent|bijli|electricity|payment/.test(lower)) {
-    const amountMatch = text.match(/₹?\s*(\d+)/);
-    const amount = amountMatch ? parseInt(amountMatch[1]) : null;
+    const amountMatch = text.match(/₹?\s*(\d[\d,]*(?:\.\d{1,2})?)/);
+    const amount = amountMatch ? Number(amountMatch[1].replace(/,/g, '')) : null;
     return {
       intent: 'EXPENSE',
       extracted: { amount },

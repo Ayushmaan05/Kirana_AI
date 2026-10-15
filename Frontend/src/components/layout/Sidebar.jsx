@@ -1,25 +1,25 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, ShoppingCart, Package, Users,
   BarChart3, MessageSquare, Settings, X, Zap
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
+import apiClient from '../../services/apiClient.js';
 
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/assistant',  icon: MessageSquare,   label: 'AI Assistant', badge: 'AI' },
-  { to: '/sales',      icon: ShoppingCart,    label: 'Sales Ledger' },
+  { to: '/sales',      icon: ShoppingCart,    label: 'Sales & Ledger' },
   { to: '/inventory',  icon: Package,         label: 'Inventory' },
-  { to: '/customers',  icon: Users,           label: 'Customers' },
+  { to: '/customers',  icon: Users,           label: 'Customer Credit' },
   { to: '/reports',    icon: BarChart3,       label: 'Reports' },
   { to: '/settings',   icon: Settings,        label: 'Settings' },
 ];
 
 export default function Sidebar() {
   const { shopName, sidebarOpen, setSidebarOpen } = useApp();
-  const location = useLocation();
 
   return (
     <>
@@ -45,7 +45,7 @@ export default function Sidebar() {
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
+          <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3" aria-label="Kirana AI home">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: 'var(--color-primary)' }}
@@ -56,7 +56,7 @@ export default function Sidebar() {
               <p className="text-white font-bold text-sm leading-tight">Kirana AI</p>
               <p className="text-white/40 text-xs leading-tight">Smart Ledger</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-white/40 hover:text-white/70 transition-colors"
@@ -115,7 +115,7 @@ export default function Sidebar() {
               className="w-2 h-2 rounded-full animate-pulse-ring"
               style={{ background: 'var(--color-primary)', flexShrink: 0 }}
             />
-            <span className="text-xs text-emerald-400 font-medium">Demo Mode Active</span>
+            <span className="text-xs text-emerald-400 font-medium">{apiClient.isDemoMode ? 'Demo Mode Active' : 'Backend Connected'}</span>
           </div>
         </div>
       </aside>

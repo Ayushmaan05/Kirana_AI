@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, ShoppingCart, Package,
-  Users, AlertTriangle, ArrowRight, Mic, Send
+  AlertTriangle, ArrowRight, Mic, Send, Receipt, Wallet
 } from 'lucide-react';
 import { getDashboardData } from '../services/dashboardService.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quickInput, setQuickInput] = useState('');
+  const navigate = useNavigate();
   const { shopName, ownerName, addNotification } = useApp();
 
   useEffect(() => {
@@ -88,20 +89,17 @@ export default function DashboardPage() {
           positive
         />
         <StatCard
-          label="Today's Expenses"
-          value={formatCurrency(data.todayExpenses)}
-          change={data.expenseChange}
-          icon={TrendingDown}
-          iconColor="#f59e0b"
-          positive={false}
+          label="Revenue"
+          value={formatCurrency(data.todayRevenue ?? data.todaySales - data.todayExpenses)}
+          change="Net today"
+          icon={Wallet}
+          iconColor="#477b58"
         />
         <StatCard
-          label="Outstanding Credit"
-          value={formatCurrency(data.outstandingCredit)}
-          change={data.creditChange}
-          icon={Users}
-          iconColor="#8b5cf6"
-          positive={false}
+          label="Transactions"
+          value={`${data.todayTransactions ?? data.recentTransactions.length} today`}
+          icon={Receipt}
+          iconColor="#758a72"
         />
         <StatCard
           label="Low Stock Items"
@@ -174,7 +172,7 @@ export default function DashboardPage() {
               aria-label="Send"
               onClick={() => {
                 if (quickInput.trim()) {
-                  addNotification({ type: 'success', title: 'Opening Assistant', message: 'Redirecting with your message…' });
+                  navigate('/assistant', { state: { draftMessage: quickInput.trim() } });
                   setQuickInput('');
                 }
               }}
@@ -202,12 +200,21 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <Link
-            to="/assistant"
-            className="flex items-center gap-2 mt-4 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-          >
-            Open full AI Assistant <ArrowRight size={14} />
-          </Link>
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link
+              to="/assistant"
+              state={{ draftMessage: 'Sold 5 kg rice for ₹300 cash' }}
+              className="flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+            >
+              <ShoppingCart size={14} /> Add a sale <ArrowRight size={14} />
+            </Link>
+            <Link
+              to="/assistant"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Open full AI Assistant <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
 
         {/* Recent Transactions */}
