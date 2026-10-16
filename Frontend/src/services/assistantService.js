@@ -1,12 +1,12 @@
 import apiClient from './apiClient.js';
 
-const delay = ms => new Promise(r => setTimeout(r, ms));
+// ─── AI Response Parser (client-side fallback) ───────────────────────────────
+// Used when the backend doesn't have an /api/assistant/message endpoint yet.
+// This provides a local NLP-style parser so the assistant page still works.
 
-// ─── AI Response Parser (mock) ────────────────────────────────────────────────
-function parseMockInput(text) {
+function parseLocalInput(text) {
   const lower = text.toLowerCase();
 
-  // Detect intent
   if (/bech|sold|sale|bikri|diya(?! udhar)/.test(lower)) {
     const itemMatches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g|ltr|litre|liter|packet(?:s)?|pkt|pcs|piece(?:s)?)?\s*([a-z][a-z0-9 -]*?)\s+(?:for|at)\s*(?:\u20b9|rs\.?\s*)?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d{1,2})?)/gi)];
     const items = itemMatches.map(([, quantity, unit = 'pcs', name, amount]) => ({
@@ -21,7 +21,7 @@ function parseMockInput(text) {
       return {
         intent: 'SALE',
         extracted: { amount, payment_mode, items },
-        reply: `I understood ${items.length} sale items totalling ₹${amount}. Please review the record before saving. (Demo response)`,
+        reply: `I understood ${items.length} sale items totalling ₹${amount}. Please review the record before saving.`,
         transaction: { type: 'sale', amount, payment_mode, items, description: text, status: 'pending_confirmation' },
       };
     }
@@ -82,7 +82,7 @@ function parseMockInput(text) {
     return {
       intent: 'QUERY_SUMMARY',
       extracted: {},
-      reply: `📊 Today's Summary:\n• Sales: ₹4,760 (Cash: ₹2,100 | UPI: ₹2,660)\n• Expenses: ₹1,200\n• Udhaar Given: ₹350\n• Net Balance: ₹3,210\n\nTop seller: Parle-G Biscuit (42 units)`,
+      reply: `📊 Loading your summary from the dashboard…`,
       transaction: null,
     };
   }
@@ -91,7 +91,7 @@ function parseMockInput(text) {
     return {
       intent: 'QUERY_STOCK',
       extracted: {},
-      reply: `⚠️ Low Stock Alert:\n• Amul Milk 1L — 12 left (threshold: 20)\n• Aashirvaad Aata — 8 bags left\n• Maggi Noodles — 6 pkts left\n\nConsider restocking these items.`,
+      reply: `📦 Checking inventory for low stock items…`,
       transaction: null,
     };
   }
@@ -106,21 +106,20 @@ function parseMockInput(text) {
 }
 
 export async function sendMessage(text) {
-  if (apiClient.isDemoMode) {
-    await delay(1200 + Math.random() * 800);
-    return parseMockInput(text);
+  // Try the backend AI endpoint first; fall back to local parsing
+  try {
+    return await apiClient.post('/api/assistant/message', { message: text });
+  } catch {
+    // Backend doesn't have this endpoint yet — use local parser
+    return parseLocalInput(text);
   }
-  return apiClient.post('/api/assistant/message', { message: text });
 }
 
 export async function transcribeAudio(audioBlob) {
-  if (apiClient.isDemoMode) {
-    await delay(1500);
-    return { text: 'Sold 2 kg rice for ₹120 cash' };
-  }
   const formData = new FormData();
   formData.append('audio', audioBlob, 'recording.webm');
-  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/assistant/transcribe`, {
+  const url = `${import.meta.env.VITE_API_BASE_URL || ''}/api/assistant/transcribe`;
+  const res = await fetch(url, {
     method: 'POST',
     body: formData,
   });

@@ -14,7 +14,7 @@ import SalesChart from '../components/charts/SalesChart.jsx';
 import InventoryChart from '../components/charts/InventoryChart.jsx';
 import Badge from '../components/common/Badge.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
-import apiClient from '../services/apiClient.js';
+
 
 function StatCard({ label, value, change, icon: Icon, iconColor, positive }) {
   return (
@@ -67,16 +67,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
-      {/* Demo Mode Banner */}
-      {apiClient.isDemoMode && (
-        <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-          style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
-        >
-          <AlertTriangle size={16} />
-          <span><strong>Demo Mode</strong> — Showing sample data. Connect your backend to see real records.</span>
-        </div>
-      )}
+
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
