@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
+import LanguageLayer from '../components/LanguageLayer.jsx';
 
 const LandingPage = lazy(() => import('../pages/LandingPage.jsx'));
 const DashboardPage = lazy(() => import('../pages/DashboardPage.jsx'));
@@ -15,6 +16,7 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage.jsx'));
 export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingSpinner message="Opening your business workspace…" />}>
+      <LanguageLayer />
       <Routes>
         {/* Landing page — no sidebar */}
         <Route path="/" element={<LandingPage />} />

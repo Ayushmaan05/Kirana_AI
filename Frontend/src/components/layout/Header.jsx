@@ -1,7 +1,8 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
+import LanguageToggle from '../LanguageToggle.jsx';
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
@@ -27,8 +28,8 @@ export default function Header() {
       className="flex items-center justify-between px-5 py-3 bg-white border-b sticky top-0 z-30"
       style={{ borderColor: 'var(--color-border)' }}
     >
-      {/* Left: hamburger + title */}
-      <div className="flex items-center gap-3">
+      {/* Left: hamburger + mobile logo + title */}
+      <div className="flex items-center gap-2.5">
         <button
           onClick={() => setSidebarOpen(true)}
           className="lg:hidden btn btn-ghost btn-icon text-slate-500"
@@ -36,6 +37,9 @@ export default function Header() {
         >
           <Menu size={22} />
         </button>
+        <Link to="/" className="lg:hidden flex items-center shrink-0 mr-1" aria-label="Kirana AI home">
+          <img src="/logo-icon.png" alt="Kirana AI" className="h-7 w-auto object-contain" />
+        </Link>
         <div>
           <h1 className="text-h3 text-slate-800">{title}</h1>
           <p className="text-xs text-slate-400 leading-none mt-0.5 hidden sm:block">
@@ -46,6 +50,7 @@ export default function Header() {
 
       {/* Right: search + notifications + avatar */}
       <div className="flex items-center gap-2">
+        <LanguageToggle className="hidden sm:inline-flex" />
         <button
           className="hidden sm:flex btn btn-ghost btn-icon text-slate-400 hover:text-slate-600"
           aria-label="Search"

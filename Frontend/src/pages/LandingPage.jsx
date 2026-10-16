@@ -18,9 +18,8 @@ export default function LandingPage() {
       <UseCasesSection />
       <footer className="bg-[#F5F5F5] px-6 pb-8 pt-12">
         <div className="mx-auto flex max-w-[88rem] flex-col justify-between gap-8 border-t border-black/10 pt-6 sm:flex-row sm:items-center">
-          <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight" aria-label="Kirana AI home">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-black text-xs font-bold text-white">क</span>
-            Kirana AI
+          <Link to="/" className="flex items-center" aria-label="Kirana AI home">
+            <img src="/logo.png" alt="Kirana AI" className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
           <p className="max-w-sm text-sm text-black/55">A simpler way to keep the everyday business details in order.</p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-black/65" aria-label="Footer navigation">

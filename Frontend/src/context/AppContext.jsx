@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
+  const [language, setLanguage] = useState(() => localStorage.getItem('kirana-language') || 'en');
   const [shopName, setShopName] = useState('Sharma General Store');
   const [ownerName, setOwnerName] = useState('Rajesh Sharma');
   const [notifications, setNotifications] = useState([]);
@@ -20,10 +21,16 @@ export function AppProvider({ children }) {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('kirana-language', language);
+    document.documentElement.lang = language === 'hi' ? 'hi' : 'en';
+  }, [language]);
+
   return (
     <AppContext.Provider value={{
       shopName, setShopName,
       ownerName, setOwnerName,
+      language, setLanguage,
       notifications, addNotification, removeNotification,
       sidebarOpen, setSidebarOpen,
     }}>
