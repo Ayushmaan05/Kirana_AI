@@ -1,4 +1,5 @@
 # Frontend
+/.env
 Frontend/node_modules/
 Frontend/dist/
 Frontend/dist-ssr/

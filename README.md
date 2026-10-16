@@ -32,21 +32,25 @@ Kirana-AI/
 
 ## Getting Started
 
-### 1. Frontend Development
+### 1. Frontend (demo mode)
 
 ```bash
 cd Frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Visit `http://localhost:5173` in your browser.
 
-### 2. Backend Development (FastAPI)
+The frontend runs with built-in demo data when `VITE_API_BASE_URL` is unset. To
+connect it to a compatible API, copy `Frontend/.env.example` to
+`Frontend/.env.local`, set `VITE_API_BASE_URL`, and restart the dev server.
+Only `VITE_*` variables are exposed to browser code: never put API keys or other
+secrets in a frontend environment file.
 
-```bash
-cd Backend
-python -m venv .venv
-.venv\Scripts\activate
-# uvicorn app.main:app --reload --port 8000
-```
+### 2. Backend
+
+The `Backend/` directory currently contains setup notes only; it does not yet
+include a runnable API application or dependency list. Backend configuration
+belongs in `Backend/.env` (see `Backend/.env.example`) when the service is
+implemented. Do not put server-side credentials in the frontend.
