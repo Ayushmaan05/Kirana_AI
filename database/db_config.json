@@ -1,0 +1,24 @@
+{
+  "engine": "sqlite3",
+  "database_file": "database/kirana_store.db",
+  "absolute_path_hint": "E:/Kirana-AI/database/kirana_store.db",
+  "options": {
+    "pragma_foreign_keys": "ON",
+    "journal_mode": "WAL",
+    "encoding": "UTF-8",
+    "timeout_sec": 10
+  },
+  "pool": {
+    "note": "sqlite file - use short-lived connections, check_same_thread False"
+  },
+  "tables": 12,
+  "views": [
+    "vw_low_stock_products",
+    "vw_expiring_soon",
+    "vw_daily_sales_summary",
+    "vw_product_daily_sales",
+    "vw_inventory_valuation",
+    "vw_daily_payment_breakdown",
+    "vw_cashier_cash_register"
+  ]
+}

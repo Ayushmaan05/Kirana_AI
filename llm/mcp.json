@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "kirana-sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "--db-path",
+        "E:/Kirana-AI/database/kirana_store.db"
+      ],
+      "env": {},
+      "description": "Kirana SQLite MCP - query kirana_store.db"
+    }
+  }
+}
