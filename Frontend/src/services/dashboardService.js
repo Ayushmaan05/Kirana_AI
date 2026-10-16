@@ -1,109 +1,42 @@
 import { normalizeTransaction } from '../models/transactionModel.js';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_TRANSACTIONS = [
-  { id: '1', type: 'sale', description: 'Aata, Daal, Chawal', items: [{ name: 'Aata', quantity: 2, unit: 'kg' }, { name: 'Daal', quantity: 1, unit: 'kg' }, { name: 'Chawal', quantity: 2, unit: 'kg' }], amount: 480, payment_mode: 'cash', customer_name: null, created_at: new Date().toISOString() },
-  { id: '2', type: 'udhaar_given', description: 'Grocery - Ramesh Kumar', amount: 350, payment_mode: 'credit', customer_name: 'Ramesh Kumar', created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: '3', type: 'sale', description: 'Maggi, Biscuit, Cold Drink', items: [{ name: 'Maggi', quantity: 2, unit: 'pkt' }, { name: 'Biscuit', quantity: 3, unit: 'pkt' }, { name: 'Cold Drink', quantity: 1, unit: 'btl' }], amount: 120, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 7200000).toISOString() },
-  { id: '4', type: 'purchase', description: 'Stock purchase - Maggi 5 peti', amount: 1200, payment_mode: 'cash', customer_name: 'Ramesh Kumar', created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: '5', type: 'sale', description: 'Amul Butter, Bread', items: [{ name: 'Amul Butter', quantity: 1, unit: 'pkt' }, { name: 'Bread', quantity: 1, unit: 'loaf' }], amount: 110, payment_mode: 'upi', customer_name: null, created_at: new Date(Date.now() - 90000000).toISOString() },
-  { id: '6', type: 'payment_received', description: 'Udhaar payment from Suresh', amount: 500, payment_mode: 'cash', customer_name: 'Suresh Sharma', created_at: new Date(Date.now() - 172800000).toISOString() },
-  { id: '7', type: 'expense', description: 'Shop rent', amount: 5000, payment_mode: 'bank', customer_name: null, created_at: new Date(Date.now() - 259200000).toISOString() },
-  { id: '8', type: 'sale', description: 'Pooja Samagri', items: [{ name: 'Pooja Samagri', quantity: 3, unit: 'set' }], amount: 750, payment_mode: 'cash', customer_name: 'Priya Devi', created_at: new Date(Date.now() - 300000000).toISOString() },
-];
-
-const MOCK_WEEKLY = [
-  { day: 'Mon', sales: 1800, expenses: 400 },
-  { day: 'Tue', sales: 2200, expenses: 600 },
-  { day: 'Wed', sales: 1400, expenses: 300 },
-  { day: 'Thu', sales: 2800, expenses: 800 },
-  { day: 'Fri', sales: 3200, expenses: 1200 },
-  { day: 'Sat', sales: 4100, expenses: 500 },
-  { day: 'Sun', sales: 3600, expenses: 400 },
-];
-
-const MOCK_DASHBOARD = {
-  todaySales:        4760,
-  todayRevenue:      3560,
-  todayTransactions: 32,
-  todayExpenses:     1200,
-  outstandingCredit: 8350,
-  totalInventoryValue: 45000,
-  salesChange:       '+12%',
-  expenseChange:     '+3%',
-  creditChange:      '-5%',
-  weeklyData:        MOCK_WEEKLY,
-  recentTransactions: MOCK_TRANSACTIONS.slice(0, 5),
-  topProducts: [
-    { name: 'Parle-G Biscuit', sales: 142, revenue: 1136 },
-    { name: 'Amul Milk 1L',    sales: 98,  revenue: 5096 },
-    { name: 'Maggi Noodles',   sales: 87,  revenue: 1740 },
-    { name: 'Aashirvaad Aata', sales: 65,  revenue: 6500 },
-    { name: 'Bisleri 1L',      sales: 54,  revenue: 1080 },
-  ],
-  lowStockCount: 3,
-};
-
-// ─── Service Functions ────────────────────────────────────────────────────────
 import apiClient from './apiClient.js';
 
+// ─── Service Functions ────────────────────────────────────────────────────────
+
 export async function getDashboardData() {
-  if (apiClient.isDemoMode) {
-    await delay(600);
-    const today = new Date().toDateString();
-    const todayTransactions = MOCK_TRANSACTIONS.filter(txn => new Date(txn.created_at).toDateString() === today);
-    const todaySales = todayTransactions.filter(txn => txn.type === 'sale').reduce((sum, txn) => sum + txn.amount, 0);
-    const todayExpenses = todayTransactions.filter(txn => txn.type === 'expense').reduce((sum, txn) => sum + txn.amount, 0);
-    return {
-      ...MOCK_DASHBOARD,
-      todaySales,
-      todayExpenses,
-      todayRevenue: todaySales - todayExpenses,
-      todayTransactions: todayTransactions.length,
-      recentTransactions: MOCK_TRANSACTIONS.slice(0, 5).map(normalizeTransaction),
-    };
-  }
-  return apiClient.get('/api/dashboard');
+  // The /api/dashboard endpoint returns the exact shape the DashboardPage expects.
+  const data = await apiClient.get('/api/dashboard');
+
+  // Normalize the recent transactions for the UI
+  return {
+    ...data,
+    recentTransactions: (data.recentTransactions || []).map(normalizeTransaction),
+  };
 }
 
 export async function getTransactions(filters = {}) {
-  if (apiClient.isDemoMode) {
-    await delay(400);
-    let txns = MOCK_TRANSACTIONS.map(normalizeTransaction);
-    if (filters.type) txns = txns.filter(t => t.type === filters.type);
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      txns = txns.filter(t =>
-        t.description.toLowerCase().includes(s) ||
-        (t.customerName || '').toLowerCase().includes(s)
-      );
-    }
-    return txns;
-  }
-  const params = new URLSearchParams(filters).toString();
-  const res = await apiClient.get(`/api/transactions?${params}`);
-  return res.map(normalizeTransaction);
+  const params = new URLSearchParams();
+  if (filters.limit) params.set('limit', filters.limit);
+  if (filters.offset) params.set('offset', filters.offset);
+  const qs = params.toString();
+  const res = await apiClient.get(`/api/sales${qs ? '?' + qs : ''}`);
+
+  // Backend returns { success, count, sales: [...] }
+  const sales = res.sales || [];
+
+  // Map backend sale records into the frontend transaction shape
+  return sales.map(sale => normalizeTransaction({
+    id: String(sale.sale_id),
+    type: 'sale',
+    description: sale.invoice_number,
+    amount: sale.net_amount,
+    payment_mode: sale.payment_method,
+    customer_name: sale.customer_name,
+    created_at: sale.sale_date,
+    status: sale.status === 'completed' ? 'confirmed' : sale.status,
+  }));
 }
 
 export async function addTransaction(data) {
-  if (apiClient.isDemoMode) {
-    await delay(800);
-    const saved = normalizeTransaction({
-      ...data,
-      id: String(Date.now()),
-      created_at: new Date().toISOString(),
-      status: 'confirmed',
-    });
-    MOCK_TRANSACTIONS.unshift({
-      ...saved,
-      created_at: saved.createdAt.toISOString(),
-      payment_mode: saved.paymentMode,
-      customer_name: saved.customerName,
-    });
-    return saved;
-  }
-  return apiClient.post('/api/transactions', data);
+  return apiClient.post('/api/sales', data);
 }
-
-// ─── Helper ───────────────────────────────────────────────────────────────────
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }

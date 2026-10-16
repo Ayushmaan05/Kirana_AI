@@ -14,7 +14,7 @@ import SalesChart from '../components/charts/SalesChart.jsx';
 import InventoryChart from '../components/charts/InventoryChart.jsx';
 import Badge from '../components/common/Badge.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
-import apiClient from '../services/apiClient.js';
+
 
 function StatCard({ label, value, change, icon: Icon, iconColor, positive }) {
   return (
@@ -67,6 +67,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
+<<<<<<< HEAD
+
+=======
       {/* Welcome & Shop Branding Banner */}
       <div className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -100,6 +103,7 @@ export default function DashboardPage() {
           <span><strong>Demo Mode</strong> — Showing sample data. Connect your backend to see real records.</span>
         </div>
       )}
+>>>>>>> a091238d98589fb2e3689bf2face1c647e03a2a0
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
