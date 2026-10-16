@@ -67,6 +67,29 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
+      {/* Welcome & Shop Branding Banner */}
+      <div className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center p-2 shrink-0 border border-emerald-100 bg-emerald-50 shadow-xs">
+            <img src="/logo-icon.png" alt="Kirana AI" className="h-full w-full object-contain" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-h3 text-slate-900 font-bold">{shopName}</h2>
+              <span className="badge badge-success text-[10px]">Active</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+              <span>Smart retail management powered by</span>
+              <img src="/logo.png" alt="Kirana AI" className="h-3.5 w-auto object-contain opacity-90 inline-block align-middle" />
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2 self-start sm:self-auto">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Real-time shop intelligence</span>
+        </div>
+      </div>
+
       {/* Demo Mode Banner */}
       {apiClient.isDemoMode && (
         <div

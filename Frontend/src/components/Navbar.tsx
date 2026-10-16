@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Menu, ShoppingBasket, X } from 'lucide-react';
+import { ArrowRight, Menu, X } from 'lucide-react';
 
 const navLinks = [
   { label: 'Home', to: '/' },
@@ -19,9 +19,8 @@ export const Navbar: React.FC = () => {
   return (
     <nav className="absolute left-0 right-0 top-0 z-30 px-5 py-4 sm:px-6 sm:py-5" aria-label="Main navigation">
       <div className="mx-auto flex max-w-[88rem] items-center justify-between gap-4">
-        <Link to="/" onClick={closeMenu} className="flex shrink-0 items-center gap-2.5" aria-label="Kirana AI home">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-black text-white"><ShoppingBasket className="h-4 w-4" /></span>
-          <span className="text-xl font-semibold tracking-tight text-black">Kirana AI</span>
+        <Link to="/" onClick={closeMenu} className="flex shrink-0 items-center" aria-label="Kirana AI home">
+          <img src="/logo.png" alt="Kirana AI" className="h-8 sm:h-9 w-auto object-contain" />
         </Link>
 
         <div className="hidden items-center gap-5 lg:flex xl:gap-7">

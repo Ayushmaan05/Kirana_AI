@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, ShoppingCart, Package, Users,
-  BarChart3, MessageSquare, Settings, X, Zap
+  BarChart3, MessageSquare, Settings, X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import apiClient from '../../services/apiClient.js';
@@ -45,17 +45,8 @@ export default function Sidebar() {
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-white/10">
-          <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3" aria-label="Kirana AI home">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              <Zap size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm leading-tight">Kirana AI</p>
-              <p className="text-white/40 text-xs leading-tight">Smart Ledger</p>
-            </div>
+          <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center" aria-label="Kirana AI home">
+            <img src="/logo-white.png" alt="Kirana AI" className="h-8 w-auto object-contain" />
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}

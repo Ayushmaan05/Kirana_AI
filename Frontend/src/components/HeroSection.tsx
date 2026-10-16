@@ -18,7 +18,7 @@ function DashboardPreview() {
   return (
     <div className="relative z-10 w-full max-w-[690px] rounded-2xl border border-black/10 bg-white p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.12)] sm:p-3.5">
       <div className="flex items-center justify-between border-b border-black/[0.06] px-2 pb-3 sm:px-3">
-        <div className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-black text-white"><Sparkles className="h-3.5 w-3.5" /></span><div><p className="text-[10px] font-semibold leading-tight text-black sm:text-xs">Sharma General Store</p><p className="mt-0.5 text-[8px] text-black/40 sm:text-[9px]">Today at a glance</p></div></div>
+        <div className="flex items-center gap-2"><img src="/logo-icon.png" alt="Kirana AI" className="h-7 w-7 rounded-lg object-contain bg-emerald-50 border border-emerald-200/60 p-1" /><div><p className="text-[10px] font-semibold leading-tight text-black sm:text-xs">Sharma General Store</p><p className="mt-0.5 text-[8px] text-black/40 sm:text-[9px]">Today at a glance</p></div></div>
         <span className="rounded-full bg-[#f3f4f1] px-2.5 py-1 text-[8px] text-black/50 sm:text-[9px]">Demo data</span>
         <button type="button" className="grid h-7 w-7 place-items-center rounded-full bg-black text-white" aria-label="Sample add transaction"><Plus className="h-3.5 w-3.5" /></button>
       </div>
