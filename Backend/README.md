@@ -9,13 +9,13 @@ FastAPI-powered backend service for Kirana AI assistant.
 - **WhatsApp Integration (Twilio / Meta Cloud API)**: Allow shopkeepers to log entries directly via WhatsApp messages and voice notes.
 - **GST & Ledger Summaries**: Daily/monthly sales, GST calculation, and PDF/WhatsApp report generator.
 
-## Getting Started (When ready)
-```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Install requirements:
-pip install -r requirements.txt
-# Run dev server:
-uvicorn app.main:app --reload --port 8000
-```
+## Current status
+
+The backend is not implemented yet: this directory has no application module
+or dependency manifest, so there is no API server to install or run at present.
+The frontend can be run independently in demo mode; see the repository
+[Getting Started](../README.md#getting-started) instructions.
+
+When the backend is implemented, keep server-side credentials in
+`Backend/.env` (see `.env.example`). Never expose them through frontend
+environment variables.

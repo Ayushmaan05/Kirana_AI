@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Store, User, Globe, Bell, Shield, ChevronRight } from 'lucide-react';
 import Input from '../components/common/Input.jsx';
 import Button from '../components/common/Button.jsx';
 import { useApp } from '../context/AppContext.jsx';
 
-const LANGUAGES = ['English', 'Hindi', 'Hinglish', 'Marathi', 'Bengali', 'Telugu', 'Tamil'];
+const LANGUAGES = ['English', 'Hindi'];
 const BUSINESS_TYPES = ['Kirana / General Store', 'Tailor Shop', 'Vegetable / Fruit Vendor', 'Tea Stall', 'Pharmacy', 'Electronics', 'Stationery', 'Other'];
 
 const SECTIONS = [
@@ -16,7 +16,7 @@ const SECTIONS = [
 ];
 
 export default function SettingsPage() {
-  const { shopName, setShopName, ownerName, setOwnerName } = useApp();
+  const { shopName, setShopName, ownerName, setOwnerName, language, setLanguage } = useApp();
   const [active, setActive] = useState('shop');
   const [form, setForm] = useState({
     shopName,
@@ -24,7 +24,7 @@ export default function SettingsPage() {
     businessType: 'Kirana / General Store',
     gstNumber: '',
     phone: '',
-    language: 'Hindi',
+    language: language === 'hi' ? 'Hindi' : 'English',
     currency: '₹ INR',
     lowStockAlerts: true,
     dailySummary: true,
@@ -34,6 +34,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    setForm(current => ({ ...current, language: language === 'hi' ? 'Hindi' : 'English' }));
+  }, [language]);
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   async function handleSave() {
@@ -41,6 +45,7 @@ export default function SettingsPage() {
     await new Promise(r => setTimeout(r, 800));
     setShopName(form.shopName);
     setOwnerName(form.ownerName);
+    setLanguage(form.language === 'Hindi' ? 'hi' : 'en');
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);

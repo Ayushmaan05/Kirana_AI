@@ -1,0 +1,287 @@
+{
+  "project": "Kirana-AI",
+  "description": "Hindi-first AI ledger for small kirana shops. SQLite Text-to-SQL context file. Load this JSON into LLM system prompt / RAG retriever for NL-to-SQL.",
+  "dialect": "sqlite-3.35+",
+  "database_file": "database/kirana_store.db",
+  "connection": {
+    "engine": "sqlite3 (Python stdlib)",
+    "path": "database/kirana_store.db",
+    "pragma_foreign_keys": "ON",
+    "pragma_journal_mode": "WAL",
+    "encoding": "UTF-8",
+    "note": "Serverless file DB. No host/port/user/password. Use absolute path. Always run PRAGMA foreign_keys=ON per connection."
+  },
+  "rules_for_llm": [
+    "Always use table and column names exactly as defined here. Never invent columns.",
+    "Always filter p.is_active=1 for products and s.status='completed' for sales unless user asks for cancelled/refunded.",
+    "Use LIKE '%keyword%' for Hindi/English product search on products.product_name.",
+    "Dates are TEXT ISO8601 (YYYY-MM-DD HH:MM:SS). Use DATE(sale_date), julianday() for date math.",
+    "Money is NUMERIC. Use ROUND(...,2). Never use FLOAT.",
+    "Prefer pre-built views: vw_low_stock_products, vw_expiring_soon, vw_daily_sales_summary, vw_product_daily_sales, vw_inventory_valuation, vw_daily_payment_breakdown, vw_cashier_cash_register.",
+    "Cash vs Online: sales.payment_method in ('cash','upi','card','credit','mixed','online'). Details in cash_payments and online_payments.",
+    "Reconciliation: sales.net_amount should equal cash_payments.amount_received + online_payments.amount.",
+    "For stock decrement use inventory_movements with movement_type='sale' and reference_type='sale'."
+  ],
+  "tables": [
+    {
+      "name": "app_users",
+      "purpose": "Staff: admin, manager, cashier, inventory_clerk",
+      "columns": [
+        {"name": "user_id", "type": "INTEGER", "pk": true, "desc": "Unique user id"},
+        {"name": "username", "type": "TEXT UNIQUE NOT NULL", "desc": "Login handle"},
+        {"name": "password_hash", "type": "TEXT NOT NULL", "desc": "Bcrypt/argon2 hash, never plaintext"},
+        {"name": "full_name", "type": "TEXT NOT NULL", "desc": "Employee name"},
+        {"name": "email", "type": "TEXT UNIQUE", "desc": "Email"},
+        {"name": "phone", "type": "TEXT", "desc": "Phone"},
+        {"name": "role", "type": "TEXT", "values": ["admin", "manager", "cashier", "inventory_clerk"], "desc": "Role"},
+        {"name": "is_active", "type": "INTEGER", "values": [0, 1], "desc": "Soft delete flag"},
+        {"name": "created_at", "type": "TEXT", "desc": "ISO timestamp"},
+        {"name": "updated_at", "type": "TEXT", "desc": "Auto-updated via trigger"}
+      ]
+    },
+    {
+      "name": "categories",
+      "purpose": "Grocery departments - Dairy, Grains, Flour, Biscuits, Spices etc.",
+      "columns": [
+        {"name": "category_id", "type": "INTEGER", "pk": true},
+        {"name": "category_name", "type": "TEXT UNIQUE NOT NULL"},
+        {"name": "description", "type": "TEXT"},
+        {"name": "is_active", "type": "INTEGER"},
+        {"name": "created_at", "type": "TEXT"},
+        {"name": "updated_at", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "suppliers",
+      "purpose": "Vendor master with lead times",
+      "columns": [
+        {"name": "supplier_id", "type": "INTEGER", "pk": true},
+        {"name": "supplier_name", "type": "TEXT NOT NULL"},
+        {"name": "contact_person", "type": "TEXT"},
+        {"name": "phone", "type": "TEXT"},
+        {"name": "email", "type": "TEXT"},
+        {"name": "address", "type": "TEXT"},
+        {"name": "city", "type": "TEXT"},
+        {"name": "state", "type": "TEXT"},
+        {"name": "gstin", "type": "TEXT"},
+        {"name": "lead_time_days", "type": "INTEGER DEFAULT 3"},
+        {"name": "is_active", "type": "INTEGER"},
+        {"name": "created_at", "type": "TEXT"},
+        {"name": "updated_at", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "products",
+      "purpose": "Product catalog with SKU, cost, MRP, stock, expiry",
+      "columns": [
+        {"name": "product_id", "type": "INTEGER", "pk": true},
+        {"name": "sku", "type": "TEXT UNIQUE NOT NULL", "example": "DAI-MLK-001"},
+        {"name": "product_name", "type": "TEXT NOT NULL", "example": "Amul Milk 500ml"},
+        {"name": "category_id", "type": "INTEGER NOT NULL", "fk": "categories.category_id ON DELETE RESTRICT"},
+        {"name": "supplier_id", "type": "INTEGER", "fk": "suppliers.supplier_id ON DELETE SET NULL"},
+        {"name": "brand", "type": "TEXT"},
+        {"name": "unit", "type": "TEXT DEFAULT 'piece'", "values": ["piece", "kg", "g", "litre", "ml", "packet", "box"]},
+        {"name": "cost_price", "type": "NUMERIC NOT NULL", "desc": "Purchase cost"},
+        {"name": "selling_price", "type": "NUMERIC NOT NULL", "desc": "MRP / selling price"},
+        {"name": "current_stock", "type": "NUMERIC NOT NULL DEFAULT 0"},
+        {"name": "min_stock_level", "type": "NUMERIC NOT NULL DEFAULT 10", "desc": "Reorder point"},
+        {"name": "max_stock_level", "type": "NUMERIC NOT NULL DEFAULT 500"},
+        {"name": "expiry_date", "type": "TEXT", "desc": "YYYY-MM-DD or NULL"},
+        {"name": "is_active", "type": "INTEGER DEFAULT 1"},
+        {"name": "created_at", "type": "TEXT"},
+        {"name": "updated_at", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "sales",
+      "purpose": "Customer bill / invoice header",
+      "columns": [
+        {"name": "sale_id", "type": "INTEGER", "pk": true},
+        {"name": "invoice_number", "type": "TEXT UNIQUE NOT NULL"},
+        {"name": "sale_date", "type": "TEXT DEFAULT CURRENT_TIMESTAMP"},
+        {"name": "customer_name", "type": "TEXT DEFAULT 'Walk-in Customer'"},
+        {"name": "customer_phone", "type": "TEXT"},
+        {"name": "cashier_id", "type": "INTEGER NOT NULL", "fk": "app_users.user_id ON DELETE RESTRICT"},
+        {"name": "total_amount", "type": "NUMERIC", "desc": "Gross before discount/tax"},
+        {"name": "discount_amount", "type": "NUMERIC"},
+        {"name": "tax_amount", "type": "NUMERIC"},
+        {"name": "net_amount", "type": "NUMERIC", "desc": "Final billed = total - discount + tax"},
+        {"name": "payment_method", "type": "TEXT", "values": ["cash", "upi", "card", "credit", "mixed", "online"]},
+        {"name": "status", "type": "TEXT", "values": ["completed", "cancelled", "refunded"]},
+        {"name": "notes", "type": "TEXT"},
+        {"name": "created_at", "type": "TEXT"},
+        {"name": "updated_at", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "cash_payments",
+      "purpose": "Cash drawer ledger: tendered, received, change, denominations JSON",
+      "columns": [
+        {"name": "cash_payment_id", "type": "INTEGER", "pk": true},
+        {"name": "sale_id", "type": "INTEGER NOT NULL", "fk": "sales.sale_id ON DELETE CASCADE"},
+        {"name": "cashier_id", "type": "INTEGER NOT NULL", "fk": "app_users.user_id ON DELETE RESTRICT"},
+        {"name": "amount_tendered", "type": "NUMERIC NOT NULL"},
+        {"name": "amount_received", "type": "NUMERIC NOT NULL", "desc": "Net cash kept = tendered - change"},
+        {"name": "change_returned", "type": "NUMERIC DEFAULT 0"},
+        {"name": "denomination_breakdown", "type": "TEXT JSON", "example": "{\"500\":2,\"100\":3,\"10\":5}", "desc": "Must pass json_valid()"},
+        {"name": "payment_status", "type": "TEXT", "values": ["completed", "cancelled", "refunded"]},
+        {"name": "payment_time", "type": "TEXT"},
+        {"name": "notes", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "online_payments",
+      "purpose": "Digital payments: UPI, QR, Card POS, provider, UTR",
+      "columns": [
+        {"name": "online_payment_id", "type": "INTEGER", "pk": true},
+        {"name": "sale_id", "type": "INTEGER NOT NULL", "fk": "sales.sale_id ON DELETE CASCADE"},
+        {"name": "payment_platform", "type": "TEXT NOT NULL", "values": ["upi", "card_pos", "qr_code", "net_banking", "wallet", "other"]},
+        {"name": "provider", "type": "TEXT NOT NULL", "values": ["PhonePe", "Google Pay", "Paytm", "BHIM", "Pine Labs", "HDFC POS", "Razorpay", "SBI", "Other"]},
+        {"name": "transaction_reference_id", "type": "TEXT UNIQUE NOT NULL", "desc": "UTR / RRN"},
+        {"name": "amount", "type": "NUMERIC NOT NULL"},
+        {"name": "payer_upi_id", "type": "TEXT"},
+        {"name": "payer_phone", "type": "TEXT"},
+        {"name": "payment_status", "type": "TEXT", "values": ["initiated", "success", "pending", "failed", "refunded"]},
+        {"name": "gateway_fee", "type": "NUMERIC DEFAULT 0"},
+        {"name": "settlement_status", "type": "TEXT", "values": ["pending", "settled", "failed"]},
+        {"name": "terminal_device_id", "type": "TEXT"},
+        {"name": "gateway_response", "type": "TEXT JSON"},
+        {"name": "payment_time", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "sale_items",
+      "purpose": "Line items per bill with snapshot pricing",
+      "columns": [
+        {"name": "sale_item_id", "type": "INTEGER", "pk": true},
+        {"name": "sale_id", "type": "INTEGER NOT NULL", "fk": "sales.sale_id ON DELETE CASCADE"},
+        {"name": "product_id", "type": "INTEGER NOT NULL", "fk": "products.product_id ON DELETE RESTRICT"},
+        {"name": "quantity", "type": "NUMERIC NOT NULL"},
+        {"name": "unit_price", "type": "NUMERIC NOT NULL", "desc": "Snapshot selling price at sale time"},
+        {"name": "cost_price", "type": "NUMERIC DEFAULT 0", "desc": "Snapshot cost at sale time for profit"},
+        {"name": "discount", "type": "NUMERIC DEFAULT 0"},
+        {"name": "line_total", "type": "NUMERIC NOT NULL", "desc": "quantity*unit_price - discount"}
+      ]
+    },
+    {
+      "name": "purchases",
+      "purpose": "Supplier purchase / GRN header",
+      "columns": [
+        {"name": "purchase_id", "type": "INTEGER", "pk": true},
+        {"name": "purchase_number", "type": "TEXT UNIQUE NOT NULL"},
+        {"name": "supplier_id", "type": "INTEGER NOT NULL", "fk": "suppliers.supplier_id ON DELETE RESTRICT"},
+        {"name": "purchase_date", "type": "TEXT"},
+        {"name": "received_by", "type": "INTEGER NOT NULL", "fk": "app_users.user_id"},
+        {"name": "total_amount", "type": "NUMERIC"},
+        {"name": "tax_amount", "type": "NUMERIC"},
+        {"name": "net_amount", "type": "NUMERIC"},
+        {"name": "payment_status", "type": "TEXT", "values": ["paid", "unpaid", "partial"]},
+        {"name": "status", "type": "TEXT", "values": ["received", "pending", "cancelled"]}
+      ]
+    },
+    {
+      "name": "purchase_items",
+      "purpose": "Batch qty/cost received per purchase",
+      "columns": [
+        {"name": "purchase_item_id", "type": "INTEGER", "pk": true},
+        {"name": "purchase_id", "type": "INTEGER NOT NULL", "fk": "purchases.purchase_id ON DELETE CASCADE"},
+        {"name": "product_id", "type": "INTEGER NOT NULL", "fk": "products.product_id ON DELETE RESTRICT"},
+        {"name": "quantity", "type": "NUMERIC NOT NULL"},
+        {"name": "unit_cost", "type": "NUMERIC NOT NULL"},
+        {"name": "line_total", "type": "NUMERIC NOT NULL"},
+        {"name": "expiry_date", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "inventory_movements",
+      "purpose": "Immutable stock audit log",
+      "columns": [
+        {"name": "movement_id", "type": "INTEGER", "pk": true},
+        {"name": "product_id", "type": "INTEGER NOT NULL", "fk": "products.product_id ON DELETE RESTRICT"},
+        {"name": "movement_type", "type": "TEXT NOT NULL", "values": ["sale", "purchase", "adjustment", "return", "damage", "expired", "opening_stock"]},
+        {"name": "quantity_change", "type": "NUMERIC NOT NULL", "desc": "Negative for OUT, positive for IN"},
+        {"name": "stock_after", "type": "NUMERIC NOT NULL"},
+        {"name": "reference_type", "type": "TEXT", "values": ["sale", "purchase", "manual", "system"]},
+        {"name": "reference_id", "type": "INTEGER", "desc": "sale_id or purchase_id"},
+        {"name": "performed_by", "type": "INTEGER", "fk": "app_users.user_id ON DELETE SET NULL"},
+        {"name": "remarks", "type": "TEXT"},
+        {"name": "created_at", "type": "TEXT"}
+      ]
+    },
+    {
+      "name": "ai_insights",
+      "purpose": "AI/SQL demand forecasts and restock suggestions",
+      "columns": [
+        {"name": "insight_id", "type": "INTEGER", "pk": true},
+        {"name": "product_id", "type": "INTEGER NOT NULL", "fk": "products.product_id ON DELETE CASCADE"},
+        {"name": "insight_type", "type": "TEXT NOT NULL", "values": ["demand_forecast", "restock_suggestion", "expiry_alert", "trend_analysis", "sql_moving_avg_forecast"]},
+        {"name": "forecast_date", "type": "TEXT"},
+        {"name": "predicted_demand", "type": "NUMERIC"},
+        {"name": "suggested_restock_qty", "type": "NUMERIC"},
+        {"name": "confidence_score", "type": "NUMERIC", "desc": "0.0-1.0"},
+        {"name": "model_version", "type": "TEXT"},
+        {"name": "parameters_used", "type": "TEXT JSON"},
+        {"name": "explanation", "type": "TEXT", "desc": "Hindi/English human-readable reason"},
+        {"name": "data_period_start", "type": "TEXT"},
+        {"name": "data_period_end", "type": "TEXT"},
+        {"name": "is_active", "type": "INTEGER DEFAULT 1"},
+        {"name": "generated_by", "type": "TEXT", "values": ["sql_procedure", "ml_model", "manual"]}
+      ]
+    }
+  ],
+  "views": [
+    {"name": "vw_low_stock_products", "purpose": "Products where current_stock < min_stock_level with shortage_qty, supplier, lead_time", "use_when": "User asks 'stock kam hai', 'reorder?', 'low stock', 'khatm hone wala'"},
+    {"name": "vw_expiring_soon", "purpose": "Expiry within 30 days with days_until_expiry", "use_when": "'expiry', 'expire hone wala', 'date nikli'"},
+    {"name": "vw_daily_sales_summary", "purpose": "Per day: total_bills, gross_sales, total_discounts, total_tax, net_revenue, total_items_sold, estimated_gross_profit", "use_when": "'aaj ki sale', 'daily summary', 'profit', 'munafa'"},
+    {"name": "vw_product_daily_sales", "purpose": "Product x day matrix: sale_day, product_id, product_name, sku, total_qty_sold, total_revenue", "use_when": "Forecasting, 'atta kitna bikta hai'"},
+    {"name": "vw_inventory_valuation", "purpose": "Stock valuation at cost vs selling: valuation_at_cost, valuation_at_selling", "use_when": "'stock value', 'inventory kitna hai'"},
+    {"name": "vw_daily_payment_breakdown", "purpose": "Per day: total_sales_count, total_billed_amount, total_cash_received, total_online_received, total_cash_change_returned, digital_collection_pct", "use_when": "'cash kitna aaya', 'UPI kitna', 'payment split'"},
+    {"name": "vw_cashier_cash_register", "purpose": "Per cashier per day: cash_bills_count, total_tendered, total_cash_retained, total_change_returned", "use_when": "'drawer tally', 'cashier hisab', 'shift close'"}
+  ],
+  "relationships": [
+    "categories (1) -> products (N) via category_id RESTRICT",
+    "suppliers (1) -> products (N) via supplier_id SET NULL",
+    "app_users (1) -> sales (N) via cashier_id RESTRICT",
+    "sales (1) -> sale_items (N) CASCADE",
+    "sales (1) -> cash_payments (1) CASCADE",
+    "sales (1) -> online_payments (1) CASCADE",
+    "products (1) -> sale_items (N) RESTRICT",
+    "suppliers (1) -> purchases (N) RESTRICT",
+    "purchases (1) -> purchase_items (N) CASCADE",
+    "products (1) -> inventory_movements (N) RESTRICT",
+    "products (1) -> ai_insights (N) CASCADE"
+  ],
+  "hindi_synonyms": {
+    "sale": ["bikri", "bechna", "bill", "hisab", "vyapar"],
+    "stock": ["maal", "samaan", "inventory", "bhandar"],
+    "low_stock": ["kam stock", "khatm", "reorder", "mangwana hai"],
+    "profit": ["munafa", "labh", "kamai", "fayda"],
+    "expiry": ["expiry", "date nikalna", "kharab hone wala"],
+    "cash": ["nagad", "rokad", "cash"],
+    "upi_online": ["upi", "phonepe", "gpay", "paytm", "online", "digital"],
+    "purchase": ["kharid", "supplier se lena", "maal aaya"],
+    "today_sales": ["aaj ki sale", "aaj ka hisab", "aaj kitna becha"]
+  },
+  "few_shot_examples": [
+    {
+      "nl_hindi": "Aaj ki total sale kitni hui?",
+      "sql": "SELECT * FROM vw_daily_sales_summary WHERE sale_day = DATE('now');"
+    },
+    {
+      "nl_hindi": "Kaunsa maal khatm hone wala hai?",
+      "sql": "SELECT sku, product_name, current_stock, min_stock_level, shortage_qty, supplier_name FROM vw_low_stock_products LIMIT 20;"
+    },
+    {
+      "nl_hindi": "Cash aur UPI me kitna aaya aaj?",
+      "sql": "SELECT * FROM vw_daily_payment_breakdown WHERE payment_day = DATE('now');"
+    },
+    {
+      "nl_hindi": "Amul doodh ka stock kitna hai?",
+      "sql": "SELECT p.sku, p.product_name, p.current_stock, p.unit, p.selling_price FROM products p WHERE p.product_name LIKE '%Amul%' AND p.is_active = 1;"
+    },
+    {
+      "nl_hindi": "Pichle 7 din ka munafa batao",
+      "sql": "SELECT sale_day, total_bills, net_revenue, estimated_gross_profit FROM vw_daily_sales_summary WHERE sale_day >= DATE('now','-7 days') ORDER BY sale_day DESC;"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+// Hindi UI copy. Data supplied by the shop (names, products, notes and amounts)
+// is intentionally left untouched.
+export const hi = {
+  'Home':'होम','Dashboard':'डैशबोर्ड','AI Assistant':'AI सहायक','AI Business Assistant':'AI बिज़नेस सहायक',
+  'Sales & Ledger':'बिक्री और बहीखाता','Inventory':'स्टॉक','Customer Credit':'ग्राहक उधार','Reports':'रिपोर्ट',
+  'Settings':'सेटिंग्स','Open Dashboard':'डैशबोर्ड खोलें','Get Started':'शुरू करें','Explore Features':'फीचर देखें',
+  'Your Shop':'आपकी दुकान','Demo Mode Active':'डेमो मोड चालू','Backend Connected':'बैकएंड जुड़ा हुआ है',
+  'Good morning':'सुप्रभात','Good afternoon':'नमस्कार','Good evening':'शुभ संध्या','Search':'खोजें','Notifications':'सूचनाएँ',
+  'Today’s Sales':'आज की बिक्री',"Today's Sales":'आज की बिक्री',"Today's sales":'आज की बिक्री','Revenue':'कमाई',
+  'Transactions':'लेन-देन','Low Stock Items':'कम स्टॉक वाले सामान','Weekly Overview':'साप्ताहिक सारांश',
+  'Sales vs Expenses':'बिक्री बनाम खर्च','This Week':'इस सप्ताह','Top Products':'सबसे ज़्यादा बिके सामान',
+  'View all':'सभी देखें','Quick Record':'जल्दी दर्ज करें','Type a sale, purchase, or udhaar in plain language':'बिक्री, खरीद या उधार आसान भाषा में लिखें',
+  'Recent Activity':'हाल की गतिविधि','Add a sale':'बिक्री जोड़ें','Open full AI Assistant':'AI सहायक खोलें',
+  'Demo Mode':'डेमो मोड','Active':'चालू','Sales':'बिक्री','Purchases':'खरीद','Expenses':'खर्च','Udhaar Given':'दिया गया उधार',
+  'Total Sales':'कुल बिक्री','Total Expenses':'कुल खर्च','Search by description or customer…':'विवरण या ग्राहक खोजें…',
+  'All Types':'सभी प्रकार','Payments':'भुगतान','Export':'निर्यात','Transaction History':'लेन-देन का इतिहास',
+  'No transactions found':'कोई लेन-देन नहीं मिला','Date':'तारीख','Item':'सामान','Quantity':'मात्रा','Amount':'राशि',
+  'Customer':'ग्राहक','Payment':'भुगतान','Type':'प्रकार','Loading transactions…':'लेन-देन लोड हो रहे हैं…',
+  'Shop Profile':'दुकान की जानकारी','Account':'खाता','Preferences':'पसंद','Notifications':'सूचनाएँ',
+  'Privacy & Security':'गोपनीयता और सुरक्षा','Shop Name':'दुकान का नाम','Owner Name':'मालिक का नाम',
+  'Business Type':'व्यवसाय का प्रकार','Mobile Number':'मोबाइल नंबर','Preferred Language':'पसंदीदा भाषा',
+  'The AI assistant will respond in your preferred language.':'AI सहायक आपकी चुनी हुई भाषा में जवाब देगा।',
+  'Currency Display':'मुद्रा','Low Stock Alerts':'कम स्टॉक की सूचना','Daily Business Summary':'दैनिक कारोबार का सारांश',
+  'Udhaar Reminders':'उधार की याद दिलाएँ','WhatsApp Notifications':'WhatsApp सूचनाएँ',
+  'Save Settings':'सेटिंग्स सहेजें','Saving…':'सहेज रहे हैं…','✓ Saved!':'✓ सहेज लिया!','Changes saved successfully.':'बदलाव सफलतापूर्वक सहेजे गए।',
+  'Confirm Entry':'एंट्री की पुष्टि करें','Done editing':'संपादन पूरा','Edit':'संपादित करें','Cancel entry':'एंट्री रद्द करें',
+  'Confirm & Save':'पुष्टि करें और सहेजें','Saving…':'सहेज रहे हैं…','Saved to your ledger!':'बहीखाते में सहेजा गया!',
+  'Listening… tap mic to stop':'सुन रहे हैं… रोकने के लिए माइक दबाएँ','Send message':'संदेश भेजें',
+  'Loading your dashboard…':'डैशबोर्ड लोड हो रहा है…','Weekly sales':'साप्ताहिक बिक्री','Recent activity':'हाल की गतिविधि',
+  'Today at a glance':'आज का सारांश','Demo data':'डेमो डेटा','Your day, at a glance':'आपके दिन का सारांश','Sample shop data':'दुकान का नमूना डेटा',
+  'Everyday text entry':'रोज़मर्रा की एंट्री','A tidy sales ledger':'साफ़ बिक्री बहीखाता','Inventory at a glance':'स्टॉक का सारांश',
+  'Customer credit':'ग्राहक उधार','Useful summaries':'काम के सारांश','Meet Kirana AI.':'मिलिए Kirana AI से।',
+  'A few words.':'कुछ शब्द।','A clearer picture.':'कारोबार की साफ़ तस्वीर।','Write it naturally':'आसान भाषा में लिखें',
+  'Check the parsed items':'पहचाने गए सामान जाँचें','Confirm when it looks right':'सही लगे तो पुष्टि करें',
+  'Review sale entry':'बिक्री एंट्री जाँचें','Try this example':'यह उदाहरण आज़माएँ','Total':'कुल','Overview':'सारांश',
+  'Monthly Trend':'मासिक रुझान','Payment Modes':'भुगतान के तरीके','GST Report':'GST रिपोर्ट','Monthly Sales':'मासिक बिक्री',
+  'Monthly Expenses':'मासिक खर्च','Pending Udhaar':'बाकी उधार','Avg Daily Sales':'औसत दैनिक बिक्री',
+  '6-Month Sales Trend':'6 महीने की बिक्री का रुझान','Monthly Sales vs Expenses':'मासिक बिक्री बनाम खर्च',
+  'Sales by Payment Mode':'भुगतान तरीके के अनुसार बिक्री','Breakdown':'विवरण','GST Report Preview':'GST रिपोर्ट का पूर्वावलोकन',
+  'Category':'श्रेणी','Taxable Value':'कर योग्य राशि','GST Amount':'GST राशि','Cancel':'रद्द करें','Record Payment':'भुगतान दर्ज करें',
+  'Payment Amount (₹)':'भुगतान राशि (₹)','Choose Hindi':'हिंदी चुनें','Switch language':'भाषा बदलें',
+  'Product Name':'सामान का नाम','Unit':'इकाई','Add Product':'सामान जोड़ें',
+  'Search products…':'सामान खोजें…','No products found':'कोई सामान नहीं मिला','Stock':'स्टॉक',
+  'Sell Price':'बिक्री मूल्य','Cost':'लागत','View now':'अभी देखें',
+  'Add your first product or clear the search filters.':'पहला सामान जोड़ें या खोज हटाएँ।',
+  'Search customers…':'ग्राहक खोजें…','Add Customer':'ग्राहक जोड़ें','Customer List':'ग्राहक सूची',
+  'Select a customer to view details and record payments.':'विवरण देखने और भुगतान दर्ज करने के लिए ग्राहक चुनें।',
+  'Customer Name':'ग्राहक का नाम','Phone Number (optional)':'फ़ोन नंबर (वैकल्पिक)','Outstanding':'बाकी राशि',
+  'Enter a valid amount':'सही राशि दर्ज करें','Restock':'फिर से स्टॉक करें',
+  'Open navigation menu':'मेन्यू खोलें','Close navigation menu':'मेन्यू बंद करें','Close sidebar':'साइडबार बंद करें',
+  'GST Number (optional)':'GST नंबर (वैकल्पिक)','Today’s sales':'आज की बिक्री',
+  'sales recorded':'बिक्री दर्ज हुई','Worth a quick look':'एक बार देख लें',
+  'A steady week so far':'अब तक अच्छा सप्ताह','A few things from today':'आज की कुछ गतिविधियाँ',
+  'Please review the record before saving.':'सहेजने से पहले एंट्री जाँच लें।'
+};
+
+export function translateHindi(value) {
+  const clean = value.trim();
+  if (hi[clean]) return value.replace(clean, hi[clean]);
+  return value;
+}

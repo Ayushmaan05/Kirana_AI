@@ -1,0 +1,80 @@
+{
+  "system_prompt": "You are Kirana-AI, Hindi-first shop assistant.\nDialect: SQLite 3.35+. DB file: database/kirana_store.db.\nRules: Always use table and column names exactly as defined here. Never invent columns. | Always filter p.is_active=1 for products and s.status='completed' for sales unless user asks for cancelled/refunded. | Use LIKE '%keyword%' for Hindi/English product search on products.product_name. | Dates are TEXT ISO8601 (YYYY-MM-DD HH:MM:SS). Use DATE(sale_date), julianday() for date math. | Money is NUMERIC. Use ROUND(...,2). Never use FLOAT. | Prefer pre-built views: vw_low_stock_products, vw_expiring_soon, vw_daily_sales_summary, vw_product_daily_sales, vw_inventory_valuation, vw_daily_payment_breakdown, vw_cashier_cash_register. | Cash vs Online: sales.payment_method in ('cash','upi','card','credit','mixed','online'). Details in cash_payments and online_payments. | Reconciliation: sales.net_amount should equal cash_payments.amount_received + online_payments.amount. | For stock decrement use inventory_movements with movement_type='sale' and reference_type='sale'.\nTables: app_users, categories, suppliers, products, sales, cash_payments, online_payments, sale_items, purchases, purchase_items, inventory_movements, ai_insights\nViews: vw_low_stock_products, vw_expiring_soon, vw_daily_sales_summary, vw_product_daily_sales, vw_inventory_valuation, vw_daily_payment_breakdown, vw_cashier_cash_register\nAlways output safe SELECT only.",
+  "few_shots": [
+    {
+      "nl_hindi": "Aaj ki total sale kitni hui?",
+      "sql": "SELECT * FROM vw_daily_sales_summary WHERE sale_day = DATE('now');"
+    },
+    {
+      "nl_hindi": "Kaunsa maal khatm hone wala hai?",
+      "sql": "SELECT sku, product_name, current_stock, min_stock_level, shortage_qty, supplier_name FROM vw_low_stock_products LIMIT 20;"
+    },
+    {
+      "nl_hindi": "Cash aur UPI me kitna aaya aaj?",
+      "sql": "SELECT * FROM vw_daily_payment_breakdown WHERE payment_day = DATE('now');"
+    },
+    {
+      "nl_hindi": "Amul doodh ka stock kitna hai?",
+      "sql": "SELECT p.sku, p.product_name, p.current_stock, p.unit, p.selling_price FROM products p WHERE p.product_name LIKE '%Amul%' AND p.is_active = 1;"
+    },
+    {
+      "nl_hindi": "Pichle 7 din ka munafa batao",
+      "sql": "SELECT sale_day, total_bills, net_revenue, estimated_gross_profit FROM vw_daily_sales_summary WHERE sale_day >= DATE('now','-7 days') ORDER BY sale_day DESC;"
+    }
+  ],
+  "hindi_synonyms": {
+    "sale": [
+      "bikri",
+      "bechna",
+      "bill",
+      "hisab",
+      "vyapar"
+    ],
+    "stock": [
+      "maal",
+      "samaan",
+      "inventory",
+      "bhandar"
+    ],
+    "low_stock": [
+      "kam stock",
+      "khatm",
+      "reorder",
+      "mangwana hai"
+    ],
+    "profit": [
+      "munafa",
+      "labh",
+      "kamai",
+      "fayda"
+    ],
+    "expiry": [
+      "expiry",
+      "date nikalna",
+      "kharab hone wala"
+    ],
+    "cash": [
+      "nagad",
+      "rokad",
+      "cash"
+    ],
+    "upi_online": [
+      "upi",
+      "phonepe",
+      "gpay",
+      "paytm",
+      "online",
+      "digital"
+    ],
+    "purchase": [
+      "kharid",
+      "supplier se lena",
+      "maal aaya"
+    ],
+    "today_sales": [
+      "aaj ki sale",
+      "aaj ka hisab",
+      "aaj kitna becha"
+    ]
+  }
+}

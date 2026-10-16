@@ -14,11 +14,52 @@ const activity = [
   { title: 'Aashirvaad Atta', meta: 'Low stock · 4 bags left', amount: 'Restock', tint: 'bg-[#f5eee0] text-[#9a7b36]' },
 ];
 
+const floatingCoins = [
+  { left: '5%', size: 30, duration: 17, delay: -8, drift: '-28px', end: '12px', tilt: '-14deg', depth: 'back' },
+  { left: '18%', size: 56, duration: 22, delay: -15, drift: '22px', end: '-18px', tilt: '12deg', depth: 'front' },
+  { left: '32%', size: 38, duration: 18, delay: -3, drift: '-16px', end: '20px', tilt: '18deg', depth: 'back' },
+  { left: '46%', size: 72, duration: 25, delay: -18, drift: '32px', end: '-20px', tilt: '-10deg', depth: 'front' },
+  { left: '61%', size: 34, duration: 16, delay: -6, drift: '-22px', end: '14px', tilt: '15deg', depth: 'back' },
+  { left: '74%', size: 48, duration: 20, delay: -11, drift: '18px', end: '-26px', tilt: '-17deg', depth: 'front' },
+  { left: '88%', size: 40, duration: 19, delay: -13, drift: '-14px', end: '24px', tilt: '11deg', depth: 'back' },
+];
+
+function FloatingCoins() {
+  return (
+    <div className="coin-field" aria-hidden="true">
+      {floatingCoins.map((coin, index) => (
+        <span
+          key={index}
+          className={`floating-coin floating-coin-${coin.depth}`}
+          style={{
+            left: coin.left,
+            width: coin.size,
+            height: coin.size,
+            animationDuration: `${coin.duration}s`,
+            animationDelay: `${coin.delay}s`,
+            '--coin-drift': coin.drift,
+            '--coin-drift-end': coin.end,
+            '--coin-tilt': coin.tilt,
+            '--coin-spin-duration': `${coin.duration * 0.72}s`,
+          } as React.CSSProperties & {
+            '--coin-drift': string;
+            '--coin-drift-end': string;
+            '--coin-tilt': string;
+            '--coin-spin-duration': string;
+          }}
+        >
+          <span className="floating-coin-face">₹</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function DashboardPreview() {
   return (
     <div className="relative z-10 w-full max-w-[690px] rounded-2xl border border-black/10 bg-white p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.12)] sm:p-3.5">
       <div className="flex items-center justify-between border-b border-black/[0.06] px-2 pb-3 sm:px-3">
-        <div className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-black text-white"><Sparkles className="h-3.5 w-3.5" /></span><div><p className="text-[10px] font-semibold leading-tight text-black sm:text-xs">Sharma General Store</p><p className="mt-0.5 text-[8px] text-black/40 sm:text-[9px]">Today at a glance</p></div></div>
+        <div className="flex items-center gap-2"><img src="/logo-icon.png" alt="Kirana AI" className="h-7 w-7 rounded-lg object-contain bg-emerald-50 border border-emerald-200/60 p-1" /><div><p className="text-[10px] font-semibold leading-tight text-black sm:text-xs">Sharma General Store</p><p className="mt-0.5 text-[8px] text-black/40 sm:text-[9px]">Today at a glance</p></div></div>
         <span className="rounded-full bg-[#f3f4f1] px-2.5 py-1 text-[8px] text-black/50 sm:text-[9px]">Demo data</span>
         <button type="button" className="grid h-7 w-7 place-items-center rounded-full bg-black text-white" aria-label="Sample add transaction"><Plus className="h-3.5 w-3.5" /></button>
       </div>
@@ -37,6 +78,7 @@ export const HeroSection: React.FC = () => (
   <section className="flex-1 px-4 pb-4 pt-[76px] sm:px-6 sm:pb-6 sm:pt-24">
     <div className="relative mx-auto grid h-full min-h-[640px] max-w-[88rem] overflow-hidden rounded-2xl bg-[#e8e8e4] px-5 py-8 sm:rounded-3xl sm:px-9 sm:py-10 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:px-14 lg:py-12">
       <div className="pointer-events-none absolute -right-24 -top-32 h-[420px] w-[420px] rounded-full bg-white/60 blur-3xl" />
+      <FloatingCoins />
       <div className="relative z-10 flex flex-col items-start lg:py-8">
         <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.13em] text-black/55"><Sparkles className="h-3 w-3"/> Kirana AI · Your daily business assistant</span>
         <h1 className="max-w-[590px] text-4xl font-medium leading-[1.06] tracking-[-.045em] text-black sm:text-5xl md:text-6xl xl:text-7xl">Your Shop.<br/>Your Records.<br/><span className="text-black/45">Simplified by AI.</span></h1>
