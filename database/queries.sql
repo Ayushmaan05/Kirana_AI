@@ -1,14 +1,13 @@
 -- ============================================================================
 -- AI KIRANA STORE — SQL QUERIES
 -- File       : queries.sql
--- Engine     : MySQL 8.0+
+-- Engine     : SQLite 3.35+
 -- Description: Comprehensive query library — product search, alerts, sales
---              reports, profit analysis, AI data queries, and SQL-based
---              demand forecasting with moving averages.
--- Usage      : Open in MySQL Workbench and run individual sections.
+--              reports, profit analysis, AI data queries, moving average
+--              demand forecasting, cash payment drawer management, and
+--              online digital payment reconciliations.
+-- Usage      : Open in any SQLite client or run with python / sqlite3 CLI.
 -- ============================================================================
-
-USE `kirana_store`;
 
 -- ############################################################################
 -- SECTION 1: PRODUCT SEARCH & CATEGORY FILTERING
@@ -20,7 +19,7 @@ SELECT p.product_id, p.sku, p.product_name, c.category_name,
 FROM products p
 JOIN categories c ON c.category_id = p.category_id
 WHERE p.product_name LIKE '%rice%'
-  AND p.is_active = TRUE;
+  AND p.is_active = 1;
 
 -- 1.2  Filter all products in a specific category
 SELECT p.product_id, p.sku, p.product_name, p.brand,
@@ -28,7 +27,7 @@ SELECT p.product_id, p.sku, p.product_name, p.brand,
 FROM products p
 JOIN categories c ON c.category_id = p.category_id
 WHERE c.category_name = 'Dairy'
-  AND p.is_active = TRUE
+  AND p.is_active = 1
 ORDER BY p.product_name;
 
 -- 1.3  List all products with category and supplier names
@@ -39,7 +38,7 @@ SELECT p.product_id, p.sku, p.product_name, c.category_name,
 FROM products p
 JOIN categories c ON c.category_id = p.category_id
 LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
-WHERE p.is_active = TRUE
+WHERE p.is_active = 1
 ORDER BY c.category_name, p.product_name;
 
 -- 1.4  Search by SKU
@@ -58,7 +57,7 @@ SELECT p.sku, p.product_name, p.current_stock, p.min_stock_level,
        p.unit
 FROM products p
 WHERE p.current_stock < p.min_stock_level
-  AND p.is_active = TRUE
+  AND p.is_active = 1
 ORDER BY shortage DESC;
 
 -- 2.3  Products completely out of stock
@@ -68,7 +67,7 @@ FROM products p
 JOIN categories c ON c.category_id = p.category_id
 LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
 WHERE p.current_stock = 0
-  AND p.is_active = TRUE;
+  AND p.is_active = 1;
 
 -- ############################################################################
 -- SECTION 3: EXPIRY ALERTS
@@ -76,11 +75,11 @@ WHERE p.current_stock = 0
 
 -- 3.1  Products expiring within 7 days
 SELECT p.sku, p.product_name, p.expiry_date,
-       DATEDIFF(p.expiry_date, CURDATE()) AS days_left,
+       CAST(ROUND(julianday(p.expiry_date) - julianday(DATE('now'))) AS INTEGER) AS days_left,
        p.current_stock, p.unit
 FROM products p
 WHERE p.expiry_date IS NOT NULL
-  AND p.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+  AND p.expiry_date BETWEEN DATE('now') AND DATE('now', '+7 days')
   AND p.current_stock > 0
 ORDER BY p.expiry_date;
 
@@ -89,11 +88,11 @@ SELECT * FROM vw_expiring_soon;
 
 -- 3.3  Already expired products still in stock
 SELECT p.sku, p.product_name, p.expiry_date,
-       DATEDIFF(CURDATE(), p.expiry_date) AS days_past_expiry,
+       CAST(ROUND(julianday(DATE('now')) - julianday(p.expiry_date)) AS INTEGER) AS days_past_expiry,
        p.current_stock, p.unit
 FROM products p
 WHERE p.expiry_date IS NOT NULL
-  AND p.expiry_date < CURDATE()
+  AND p.expiry_date < DATE('now')
   AND p.current_stock > 0;
 
 -- ############################################################################
@@ -102,52 +101,52 @@ WHERE p.expiry_date IS NOT NULL
 
 -- 4.1  Today's sales summary
 SELECT COUNT(DISTINCT sale_id) AS total_bills,
-       SUM(net_amount) AS total_revenue,
-       SUM(discount_amount) AS total_discounts,
+       ROUND(SUM(net_amount), 2) AS total_revenue,
+       ROUND(SUM(discount_amount), 2) AS total_discounts,
        ROUND(AVG(net_amount), 2) AS avg_bill_value
 FROM sales
-WHERE DATE(sale_date) = CURDATE()
+WHERE DATE(sale_date) = DATE('now')
   AND status = 'completed';
 
 -- 4.2  Daily sales for last 7 days
 SELECT DATE(sale_date) AS sale_day,
        COUNT(*) AS num_bills,
-       SUM(net_amount) AS revenue,
-       SUM(discount_amount) AS discounts
+       ROUND(SUM(net_amount), 2) AS revenue,
+       ROUND(SUM(discount_amount), 2) AS discounts
 FROM sales
-WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+WHERE DATE(sale_date) >= DATE('now', '-7 days')
   AND status = 'completed'
 GROUP BY DATE(sale_date)
 ORDER BY sale_day DESC;
 
 -- 4.3  Weekly sales for last 4 weeks
-SELECT YEARWEEK(sale_date, 1) AS year_week,
+SELECT strftime('%Y-W%W', sale_date) AS year_week,
        MIN(DATE(sale_date)) AS week_start,
        MAX(DATE(sale_date)) AS week_end,
        COUNT(*) AS num_bills,
-       SUM(net_amount) AS revenue
+       ROUND(SUM(net_amount), 2) AS revenue
 FROM sales
-WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 4 WEEK)
+WHERE DATE(sale_date) >= DATE('now', '-28 days')
   AND status = 'completed'
-GROUP BY YEARWEEK(sale_date, 1)
+GROUP BY strftime('%Y-W%W', sale_date)
 ORDER BY year_week DESC;
 
 -- 4.4  Monthly sales for last 6 months
-SELECT DATE_FORMAT(sale_date, '%Y-%m') AS month,
+SELECT strftime('%Y-%m', sale_date) AS month,
        COUNT(*) AS num_bills,
-       SUM(net_amount) AS revenue,
-       SUM(discount_amount) AS discounts,
+       ROUND(SUM(net_amount), 2) AS revenue,
+       ROUND(SUM(discount_amount), 2) AS discounts,
        ROUND(AVG(net_amount), 2) AS avg_bill
 FROM sales
-WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+WHERE DATE(sale_date) >= DATE('now', '-6 months')
   AND status = 'completed'
-GROUP BY DATE_FORMAT(sale_date, '%Y-%m')
+GROUP BY strftime('%Y-%m', sale_date)
 ORDER BY month DESC;
 
 -- 4.5  Sales by payment method
 SELECT payment_method,
        COUNT(*) AS num_bills,
-       SUM(net_amount) AS total_revenue,
+       ROUND(SUM(net_amount), 2) AS total_revenue,
        ROUND(100.0 * SUM(net_amount) /
              (SELECT SUM(net_amount) FROM sales WHERE status = 'completed'), 1)
              AS pct_revenue
@@ -178,7 +177,7 @@ LIMIT 10;
 
 -- 5.2  Top 10 products by revenue (all time)
 SELECT p.sku, p.product_name,
-       SUM(si.line_total) AS total_revenue,
+       ROUND(SUM(si.line_total), 2) AS total_revenue,
        SUM(si.quantity) AS total_qty_sold
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
@@ -191,12 +190,12 @@ LIMIT 10;
 -- 5.3  Top products this month
 SELECT p.sku, p.product_name,
        SUM(si.quantity) AS qty_sold,
-       SUM(si.line_total) AS revenue
+       ROUND(SUM(si.line_total), 2) AS revenue
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
 JOIN sales s ON s.sale_id = si.sale_id
 WHERE s.status = 'completed'
-  AND DATE_FORMAT(s.sale_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+  AND strftime('%Y-%m', s.sale_date) = strftime('%Y-%m', DATE('now'))
 GROUP BY p.product_id, p.sku, p.product_name
 ORDER BY qty_sold DESC
 LIMIT 10;
@@ -204,7 +203,7 @@ LIMIT 10;
 -- 5.4  Best-selling categories
 SELECT c.category_name,
        SUM(si.quantity) AS total_qty_sold,
-       SUM(si.line_total) AS total_revenue,
+       ROUND(SUM(si.line_total), 2) AS total_revenue,
        COUNT(DISTINCT si.product_id) AS products_sold
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
@@ -221,9 +220,9 @@ ORDER BY total_revenue DESC;
 -- 6.1  Estimated gross profit per product
 SELECT p.sku, p.product_name,
        SUM(si.quantity) AS total_qty_sold,
-       SUM(si.line_total) AS revenue,
-       SUM(si.cost_price * si.quantity) AS cost,
-       SUM(si.line_total) - SUM(si.cost_price * si.quantity) AS gross_profit,
+       ROUND(SUM(si.line_total), 2) AS revenue,
+       ROUND(SUM(si.cost_price * si.quantity), 2) AS cost,
+       ROUND(SUM(si.line_total) - SUM(si.cost_price * si.quantity), 2) AS gross_profit,
        ROUND(100.0 * (SUM(si.line_total) - SUM(si.cost_price * si.quantity))
              / NULLIF(SUM(si.line_total), 0), 1) AS margin_pct
 FROM sale_items si
@@ -235,9 +234,9 @@ ORDER BY gross_profit DESC;
 
 -- 6.2  Daily profit report
 SELECT DATE(s.sale_date) AS sale_day,
-       SUM(si.line_total) AS revenue,
-       SUM(si.cost_price * si.quantity) AS cost,
-       SUM(si.line_total) - SUM(si.cost_price * si.quantity) AS daily_profit
+       ROUND(SUM(si.line_total), 2) AS revenue,
+       ROUND(SUM(si.cost_price * si.quantity), 2) AS cost,
+       ROUND(SUM(si.line_total) - SUM(si.cost_price * si.quantity), 2) AS daily_profit
 FROM sale_items si
 JOIN sales s ON s.sale_id = si.sale_id
 WHERE s.status = 'completed'
@@ -246,9 +245,9 @@ ORDER BY sale_day DESC;
 
 -- 6.3  Overall profit summary
 SELECT
-    SUM(si.line_total) AS total_revenue,
-    SUM(si.cost_price * si.quantity) AS total_cost,
-    SUM(si.line_total) - SUM(si.cost_price * si.quantity) AS total_profit,
+    ROUND(SUM(si.line_total), 2) AS total_revenue,
+    ROUND(SUM(si.cost_price * si.quantity), 2) AS total_cost,
+    ROUND(SUM(si.line_total) - SUM(si.cost_price * si.quantity), 2) AS total_profit,
     ROUND(100.0 * (SUM(si.line_total) - SUM(si.cost_price * si.quantity))
           / NULLIF(SUM(si.line_total), 0), 1) AS overall_margin_pct,
     COUNT(DISTINCT s.sale_id) AS total_bills,
@@ -273,9 +272,9 @@ ORDER BY pu.purchase_date DESC;
 -- 7.2  Purchase summary by supplier
 SELECT s.supplier_name,
        COUNT(*) AS num_purchases,
-       SUM(pu.net_amount) AS total_spent,
+       ROUND(SUM(pu.net_amount), 2) AS total_spent,
        MAX(pu.purchase_date) AS last_purchase,
-       SUM(CASE WHEN pu.payment_status = 'unpaid' THEN pu.net_amount ELSE 0 END)
+       ROUND(SUM(CASE WHEN pu.payment_status = 'unpaid' THEN pu.net_amount ELSE 0 END), 2)
            AS outstanding_amount
 FROM purchases pu
 JOIN suppliers s ON s.supplier_id = pu.supplier_id
@@ -290,14 +289,14 @@ FROM purchases pu
 JOIN suppliers s ON s.supplier_id = pu.supplier_id
 JOIN purchase_items pi ON pi.purchase_id = pu.purchase_id
 JOIN products p ON p.product_id = pi.product_id
-WHERE pu.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+WHERE DATE(pu.purchase_date) >= DATE('now', '-30 days')
 ORDER BY pu.purchase_date DESC, p.product_name;
 
 -- 7.4  Products supplied by each supplier
 SELECT s.supplier_name, p.sku, p.product_name, p.cost_price, p.selling_price
 FROM products p
 JOIN suppliers s ON s.supplier_id = p.supplier_id
-WHERE p.is_active = TRUE
+WHERE p.is_active = 1
 ORDER BY s.supplier_name, p.product_name;
 
 -- ############################################################################
@@ -309,22 +308,22 @@ SELECT * FROM vw_inventory_valuation;
 
 -- 8.2  Total inventory value
 SELECT
-    SUM(current_stock * cost_price) AS total_value_at_cost,
-    SUM(current_stock * selling_price) AS total_value_at_selling,
-    SUM(current_stock * selling_price) - SUM(current_stock * cost_price)
+    ROUND(SUM(current_stock * cost_price), 2) AS total_value_at_cost,
+    ROUND(SUM(current_stock * selling_price), 2) AS total_value_at_selling,
+    ROUND(SUM(current_stock * selling_price) - SUM(current_stock * cost_price), 2)
         AS potential_margin,
     COUNT(*) AS products_in_stock
 FROM products
-WHERE is_active = TRUE AND current_stock > 0;
+WHERE is_active = 1 AND current_stock > 0;
 
 -- 8.3  Valuation by category
 SELECT c.category_name,
        COUNT(*) AS num_products,
-       SUM(p.current_stock * p.cost_price) AS value_at_cost,
-       SUM(p.current_stock * p.selling_price) AS value_at_selling
+       ROUND(SUM(p.current_stock * p.cost_price), 2) AS value_at_cost,
+       ROUND(SUM(p.current_stock * p.selling_price), 2) AS value_at_selling
 FROM products p
 JOIN categories c ON c.category_id = p.category_id
-WHERE p.is_active = TRUE AND p.current_stock > 0
+WHERE p.is_active = 1 AND p.current_stock > 0
 GROUP BY c.category_id, c.category_name
 ORDER BY value_at_cost DESC;
 
@@ -340,36 +339,36 @@ LIMIT 50;
 SELECT si.product_id, p.product_name, p.sku,
        SUM(si.quantity) AS total_qty_sold_30d,
        COUNT(DISTINCT DATE(s.sale_date)) AS days_with_sales,
-       ROUND(SUM(si.quantity) / 30, 3) AS avg_daily_demand_30d
+       ROUND(SUM(si.quantity) / 30.0, 3) AS avg_daily_demand_30d
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
 JOIN sales s ON s.sale_id = si.sale_id
 WHERE s.status = 'completed'
-  AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+  AND DATE(s.sale_date) >= DATE('now', '-30 days')
 GROUP BY si.product_id, p.product_name, p.sku
 ORDER BY avg_daily_demand_30d DESC;
 
 -- 9.3  Historical demand — last 60 days per product
 SELECT si.product_id, p.product_name,
        SUM(si.quantity) AS total_qty_sold_60d,
-       ROUND(SUM(si.quantity) / 60, 3) AS avg_daily_demand_60d
+       ROUND(SUM(si.quantity) / 60.0, 3) AS avg_daily_demand_60d
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
 JOIN sales s ON s.sale_id = si.sale_id
 WHERE s.status = 'completed'
-  AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+  AND DATE(s.sale_date) >= DATE('now', '-60 days')
 GROUP BY si.product_id, p.product_name
 ORDER BY avg_daily_demand_60d DESC;
 
 -- 9.4  Historical demand — last 90 days per product
 SELECT si.product_id, p.product_name,
        SUM(si.quantity) AS total_qty_sold_90d,
-       ROUND(SUM(si.quantity) / 90, 3) AS avg_daily_demand_90d
+       ROUND(SUM(si.quantity) / 90.0, 3) AS avg_daily_demand_90d
 FROM sale_items si
 JOIN products p ON p.product_id = si.product_id
 JOIN sales s ON s.sale_id = si.sale_id
 WHERE s.status = 'completed'
-  AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+  AND DATE(s.sale_date) >= DATE('now', '-90 days')
 GROUP BY si.product_id, p.product_name
 ORDER BY avg_daily_demand_90d DESC;
 
@@ -381,7 +380,7 @@ SELECT p.product_id, p.sku, p.product_name,
        COALESCE(s.lead_time_days, 0) AS lead_time_days
 FROM products p
 LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
-WHERE p.is_active = TRUE
+WHERE p.is_active = 1
 ORDER BY p.current_stock ASC;
 
 -- 9.6  Inventory movement history for a specific product
@@ -401,47 +400,39 @@ SELECT ai.insight_id, p.sku, p.product_name,
        ai.explanation, ai.generated_by
 FROM ai_insights ai
 JOIN products p ON p.product_id = ai.product_id
-WHERE ai.is_active = TRUE
+WHERE ai.is_active = 1
 ORDER BY ai.forecast_date DESC, ai.insight_type;
 
 -- ############################################################################
 -- SECTION 10: SQL-BASED DEMAND FORECASTING MODULE
 -- ############################################################################
--- This section implements demand forecasting using MySQL 8.0+ features:
--- CTEs, window functions, and date arithmetic.
--- These are STATISTICAL estimates, NOT machine learning predictions.
 
 -- ============================================================================
 -- 10.1  AVERAGE DAILY DEMAND (7, 30, 90 days)
---        Uses a calendar CTE to include zero-sale days
 -- ============================================================================
-WITH RECURSIVE date_series AS (
-    -- Generate all dates from 90 days ago to today
-    SELECT DATE_SUB(CURDATE(), INTERVAL 90 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-90 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY)
+    SELECT DATE(dt, '+1 day')
     FROM date_series
-    WHERE dt < CURDATE()
+    WHERE dt < DATE('now')
 ),
 active_products AS (
     SELECT product_id, product_name, sku
     FROM products
-    WHERE is_active = TRUE
+    WHERE is_active = 1
 ),
 daily_sales AS (
-    -- Actual daily sales per product (only completed sales)
     SELECT DATE(s.sale_date) AS sale_day,
            si.product_id,
            SUM(si.quantity) AS qty_sold
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-90 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
 product_date_grid AS (
-    -- Cross-join products × dates, then LEFT JOIN sales
-    -- This ensures days with zero sales are counted as zero (not excluded)
     SELECT ap.product_id, ap.product_name, ap.sku,
            ds.dt AS sale_day,
            COALESCE(dl.qty_sold, 0) AS qty_sold
@@ -451,33 +442,24 @@ product_date_grid AS (
         ON dl.product_id = ap.product_id AND dl.sale_day = ds.dt
 )
 SELECT product_id, product_name, sku,
-    -- 7-day average
-    ROUND(SUM(CASE WHEN sale_day >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                   THEN qty_sold ELSE 0 END) / 7, 3) AS avg_daily_7d,
-    -- 30-day average
-    ROUND(SUM(CASE WHEN sale_day >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-                   THEN qty_sold ELSE 0 END) / 30, 3) AS avg_daily_30d,
-    -- 90-day average
-    ROUND(SUM(qty_sold) / 90, 3) AS avg_daily_90d,
-    -- Total sold in each period
-    SUM(CASE WHEN sale_day >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-             THEN qty_sold ELSE 0 END) AS total_7d,
-    SUM(CASE WHEN sale_day >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-             THEN qty_sold ELSE 0 END) AS total_30d,
+    ROUND(SUM(CASE WHEN sale_day >= DATE('now', '-7 days') THEN qty_sold ELSE 0 END) / 7.0, 3) AS avg_daily_7d,
+    ROUND(SUM(CASE WHEN sale_day >= DATE('now', '-30 days') THEN qty_sold ELSE 0 END) / 30.0, 3) AS avg_daily_30d,
+    ROUND(SUM(qty_sold) / 90.0, 3) AS avg_daily_90d,
+    SUM(CASE WHEN sale_day >= DATE('now', '-7 days') THEN qty_sold ELSE 0 END) AS total_7d,
+    SUM(CASE WHEN sale_day >= DATE('now', '-30 days') THEN qty_sold ELSE 0 END) AS total_30d,
     SUM(qty_sold) AS total_90d
 FROM product_date_grid
 GROUP BY product_id, product_name, sku
-HAVING total_90d > 0  -- Exclude products never sold
+HAVING total_90d > 0
 ORDER BY avg_daily_30d DESC;
 
 -- ============================================================================
 -- 10.2  SIMPLE MOVING AVERAGE (7-day and 30-day rolling windows)
---        Uses window functions over the date grid
 -- ============================================================================
-WITH RECURSIVE date_series AS (
-    SELECT DATE_SUB(CURDATE(), INTERVAL 90 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-90 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY) FROM date_series WHERE dt < CURDATE()
+    SELECT DATE(dt, '+1 day') FROM date_series WHERE dt < DATE('now')
 ),
 daily_sales AS (
     SELECT DATE(s.sale_date) AS sale_day,
@@ -486,10 +468,9 @@ daily_sales AS (
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-90 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
--- Focus on a specific product for readability (change product_id as needed)
 product_daily AS (
     SELECT ds.dt AS sale_day,
            COALESCE(dl.qty_sold, 0) AS qty_sold
@@ -498,61 +479,52 @@ product_daily AS (
 )
 SELECT sale_day,
        qty_sold,
-       -- 7-day Simple Moving Average
        ROUND(AVG(qty_sold) OVER (
            ORDER BY sale_day
            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
        ), 3) AS sma_7d,
-       -- 30-day Simple Moving Average
        ROUND(AVG(qty_sold) OVER (
            ORDER BY sale_day
            ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
        ), 3) AS sma_30d
 FROM product_daily
--- Show only the last 30 days of results (the early days lack full windows)
-WHERE sale_day >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+WHERE sale_day >= DATE('now', '-30 days')
 ORDER BY sale_day;
 
 -- ============================================================================
 -- 10.3  TREND DETECTION
---        Compare recent 30-day demand vs previous 30-day demand
---        Flag as 'increasing', 'decreasing', or 'stable'
 -- ============================================================================
 WITH demand_periods AS (
     SELECT si.product_id,
            p.product_name,
            p.sku,
-           -- Recent 30 days
            SUM(CASE
-               WHEN DATE(s.sale_date) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+               WHEN DATE(s.sale_date) >= DATE('now', '-30 days')
                THEN si.quantity ELSE 0 END) AS recent_30d_qty,
-           -- Previous 30 days (day 31 to day 60 ago)
            SUM(CASE
-               WHEN DATE(s.sale_date) >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
-                AND DATE(s.sale_date) < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+               WHEN DATE(s.sale_date) >= DATE('now', '-60 days')
+                AND DATE(s.sale_date) < DATE('now', '-30 days')
                THEN si.quantity ELSE 0 END) AS prev_30d_qty
     FROM sale_items si
     JOIN products p ON p.product_id = si.product_id
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-60 days')
     GROUP BY si.product_id, p.product_name, p.sku
 )
 SELECT product_id, product_name, sku,
        recent_30d_qty,
        prev_30d_qty,
-       -- Percentage change
        CASE
            WHEN prev_30d_qty = 0 AND recent_30d_qty > 0 THEN 100.0
            WHEN prev_30d_qty = 0 AND recent_30d_qty = 0 THEN 0.0
            ELSE ROUND(100.0 * (recent_30d_qty - prev_30d_qty) / prev_30d_qty, 1)
        END AS pct_change,
-       -- Trend classification
        CASE
            WHEN prev_30d_qty = 0 AND recent_30d_qty > 0 THEN 'NEW_DEMAND'
            WHEN prev_30d_qty = 0 AND recent_30d_qty = 0 THEN 'NO_SALES'
-           WHEN (recent_30d_qty - prev_30d_qty) / prev_30d_qty > 0.15  THEN 'INCREASING'
-           WHEN (recent_30d_qty - prev_30d_qty) / prev_30d_qty < -0.15 THEN 'DECREASING'
+           WHEN (recent_30d_qty - prev_30d_qty) * 1.0 / prev_30d_qty > 0.15  THEN 'INCREASING'
+           WHEN (recent_30d_qty - prev_30d_qty) * 1.0 / prev_30d_qty < -0.15 THEN 'DECREASING'
            ELSE 'STABLE'
        END AS trend
 FROM demand_periods
@@ -560,13 +532,11 @@ ORDER BY recent_30d_qty DESC;
 
 -- ============================================================================
 -- 10.4  7-DAY DEMAND FORECAST
---        Predict next 7 days using 7-day moving average
---        Show current stock and predicted remaining stock
 -- ============================================================================
-WITH RECURSIVE date_series AS (
-    SELECT DATE_SUB(CURDATE(), INTERVAL 30 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-30 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY) FROM date_series WHERE dt < CURDATE()
+    SELECT DATE(dt, '+1 day') FROM date_series WHERE dt < DATE('now')
 ),
 daily_sales AS (
     SELECT DATE(s.sale_date) AS sale_day,
@@ -575,22 +545,21 @@ daily_sales AS (
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-30 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
 product_avg AS (
     SELECT p.product_id, p.product_name, p.sku,
            p.current_stock, p.min_stock_level, p.unit,
-           -- Use 7-day avg: total sold in last 7 days / 7
            COALESCE(
-               SUM(CASE WHEN ds.dt >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7,
+               SUM(CASE WHEN ds.dt >= DATE('now', '-7 days')
+                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7.0,
                0
            ) AS avg_daily_7d
     FROM products p
     CROSS JOIN date_series ds
     LEFT JOIN daily_sales dl ON dl.product_id = p.product_id AND dl.sale_day = ds.dt
-    WHERE p.is_active = TRUE
+    WHERE p.is_active = 1
     GROUP BY p.product_id, p.product_name, p.sku,
              p.current_stock, p.min_stock_level, p.unit
 )
@@ -607,21 +576,16 @@ SELECT product_id, product_name, sku, unit,
            ELSE 'OK'
        END AS stock_status
 FROM product_avg
-WHERE avg_daily_7d > 0  -- Only products with recent sales
+WHERE avg_daily_7d > 0
 ORDER BY predicted_stock_after_7d ASC;
 
 -- ============================================================================
 -- 10.5  RESTOCK SUGGESTION QUERY
---        Formula: suggested_order = MAX(0,
---            (predicted_7day_demand × safety_factor)
---          + (lead_time_days × avg_daily_demand)
---          - current_stock )
---        safety_factor = 1.25 (25% safety buffer)
 -- ============================================================================
-WITH RECURSIVE date_series AS (
-    SELECT DATE_SUB(CURDATE(), INTERVAL 30 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-30 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY) FROM date_series WHERE dt < CURDATE()
+    SELECT DATE(dt, '+1 day') FROM date_series WHERE dt < DATE('now')
 ),
 daily_sales AS (
     SELECT DATE(s.sale_date) AS sale_day,
@@ -630,7 +594,7 @@ daily_sales AS (
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-30 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
 product_demand AS (
@@ -639,15 +603,15 @@ product_demand AS (
            COALESCE(s.supplier_name, 'N/A') AS supplier_name,
            COALESCE(s.lead_time_days, 3) AS lead_time_days,
            COALESCE(
-               SUM(CASE WHEN ds.dt >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7,
+               SUM(CASE WHEN ds.dt >= DATE('now', '-7 days')
+                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7.0,
                0
            ) AS avg_daily_7d
     FROM products p
     LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
     CROSS JOIN date_series ds
     LEFT JOIN daily_sales dl ON dl.product_id = p.product_id AND dl.sale_day = ds.dt
-    WHERE p.is_active = TRUE
+    WHERE p.is_active = 1
     GROUP BY p.product_id, p.product_name, p.sku,
              p.current_stock, p.min_stock_level, p.cost_price, p.unit,
              s.supplier_name, s.lead_time_days
@@ -657,18 +621,14 @@ SELECT product_id, product_name, sku, unit,
        ROUND(avg_daily_7d, 3) AS avg_daily_demand,
        lead_time_days,
        supplier_name,
-       -- Predicted 7-day demand
        ROUND(avg_daily_7d * 7, 3) AS predicted_7d_demand,
-       -- Lead time demand
        ROUND(avg_daily_7d * lead_time_days, 3) AS lead_time_demand,
-       -- Suggested order quantity (with 1.25x safety factor)
-       GREATEST(0, ROUND(
-           (avg_daily_7d * 7 * 1.25)         -- 7-day demand × safety
-         + (avg_daily_7d * lead_time_days)    -- lead time coverage
-         - current_stock,                      -- minus what we have
+       MAX(0, ROUND(
+           (avg_daily_7d * 7 * 1.25)
+         + (avg_daily_7d * lead_time_days)
+         - current_stock,
        3)) AS suggested_order_qty,
-       -- Estimated cost of restock
-       ROUND(GREATEST(0,
+       ROUND(MAX(0,
            (avg_daily_7d * 7 * 1.25)
          + (avg_daily_7d * lead_time_days)
          - current_stock
@@ -678,14 +638,11 @@ WHERE avg_daily_7d > 0
 ORDER BY suggested_order_qty DESC;
 
 -- ============================================================================
--- 10.6  INSERT FORECASTS INTO ai_insights TABLE
---        Stores calculated moving-average forecasts for the application
---        and AI team to reference.
+-- 10.6  STORE FORECASTS INTO ai_insights
 -- ============================================================================
-
--- First, deactivate previous SQL-based forecasts
+-- Deactivate previous SQL-based forecasts
 UPDATE ai_insights
-SET is_active = FALSE
+SET is_active = 0
 WHERE generated_by = 'sql_procedure'
   AND insight_type = 'sql_moving_avg_forecast';
 
@@ -697,10 +654,10 @@ INSERT INTO ai_insights (
     data_period_start, data_period_end,
     is_active, generated_by
 )
-WITH RECURSIVE date_series AS (
-    SELECT DATE_SUB(CURDATE(), INTERVAL 30 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-30 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY) FROM date_series WHERE dt < CURDATE()
+    SELECT DATE(dt, '+1 day') FROM date_series WHERE dt < DATE('now')
 ),
 daily_sales AS (
     SELECT DATE(s.sale_date) AS sale_day,
@@ -709,7 +666,7 @@ daily_sales AS (
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-30 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
 product_forecast AS (
@@ -717,60 +674,42 @@ product_forecast AS (
            p.product_name,
            p.current_stock,
            COALESCE(sup.lead_time_days, 3) AS lead_time_days,
-           -- 7-day moving average
            COALESCE(
-               SUM(CASE WHEN ds.dt >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7,
+               SUM(CASE WHEN ds.dt >= DATE('now', '-7 days')
+                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7.0,
                0) AS avg_daily_7d,
-           -- 30-day moving average
-           COALESCE(SUM(COALESCE(dl.qty_sold, 0)) / 30, 0) AS avg_daily_30d,
-           -- Days with actual sales (for confidence calculation)
+           COALESCE(SUM(COALESCE(dl.qty_sold, 0)) / 30.0, 0) AS avg_daily_30d,
            COUNT(DISTINCT CASE WHEN dl.qty_sold > 0 THEN ds.dt END) AS days_with_sales
     FROM products p
     CROSS JOIN date_series ds
     LEFT JOIN daily_sales dl ON dl.product_id = p.product_id AND dl.sale_day = ds.dt
     LEFT JOIN suppliers sup ON sup.supplier_id = p.supplier_id
-    WHERE p.is_active = TRUE
+    WHERE p.is_active = 1
     GROUP BY p.product_id, p.product_name, p.current_stock, sup.lead_time_days
     HAVING avg_daily_7d > 0 OR avg_daily_30d > 0
 )
 SELECT
     product_id,
     'sql_moving_avg_forecast',
-    DATE_ADD(CURDATE(), INTERVAL 7 DAY),                -- forecast for 7 days ahead
-    ROUND(avg_daily_7d * 7, 3),                          -- predicted demand
-    GREATEST(0, ROUND(
-        (avg_daily_7d * 7 * 1.25) + (avg_daily_7d * lead_time_days) - current_stock
-    , 3)),                                                -- suggested restock
-    -- Confidence: based on data availability (more sales days = higher confidence)
-    ROUND(LEAST(1.0, days_with_sales / 20.0), 4),
+    DATE('now', '+7 days'),
+    ROUND(avg_daily_7d * 7, 3),
+    MAX(0, ROUND((avg_daily_7d * 7 * 1.25) + (avg_daily_7d * lead_time_days) - current_stock, 3)),
+    ROUND(MIN(1.0, days_with_sales / 20.0), 4),
     'sql_moving_avg_v1',
-    JSON_OBJECT(
+    json_object(
         'window_7day', 7,
         'window_30day', 30,
         'safety_factor', 1.25,
         'lead_time_days', lead_time_days
     ),
-    CONCAT('SQL moving-average forecast. 7-day avg demand: ',
-           ROUND(avg_daily_7d, 3), '/day. ',
-           '30-day avg demand: ', ROUND(avg_daily_30d, 3), '/day. ',
-           'Based on ', days_with_sales, ' days with actual sales out of 30.'),
-    DATE_SUB(CURDATE(), INTERVAL 30 DAY),
-    CURDATE(),
-    TRUE,
+    'SQL moving-average forecast. 7-day avg demand: ' || ROUND(avg_daily_7d, 3) || '/day. ' ||
+    '30-day avg demand: ' || ROUND(avg_daily_30d, 3) || '/day. ' ||
+    'Based on ' || days_with_sales || ' days with actual sales out of 30.',
+    DATE('now', '-30 days'),
+    DATE('now'),
+    1,
     'sql_procedure'
 FROM product_forecast;
-
--- Verify the inserted forecasts
-SELECT ai.insight_id, p.sku, p.product_name,
-       ai.predicted_demand, ai.suggested_restock_qty,
-       ai.confidence_score, ai.explanation
-FROM ai_insights ai
-JOIN products p ON p.product_id = ai.product_id
-WHERE ai.is_active = TRUE
-  AND ai.generated_by = 'sql_procedure'
-  AND ai.insight_type = 'sql_moving_avg_forecast'
-ORDER BY ai.predicted_demand DESC;
 
 -- ============================================================================
 -- 10.7  EDGE CASES AND CONSIDERATIONS
@@ -782,7 +721,7 @@ SELECT p.sku, p.product_name, p.current_stock,
 FROM products p
 LEFT JOIN sale_items si ON si.product_id = p.product_id
 LEFT JOIN sales s ON s.sale_id = si.sale_id AND s.status = 'completed'
-WHERE p.is_active = TRUE
+WHERE p.is_active = 1
   AND s.sale_id IS NULL;
 
 -- Products with very sparse sales (low confidence forecasts)
@@ -792,7 +731,7 @@ WITH product_sales_freq AS (
            COUNT(DISTINCT DATE(s.sale_date)) AS days_with_sales,
            MIN(DATE(s.sale_date)) AS first_sale,
            MAX(DATE(s.sale_date)) AS last_sale,
-           DATEDIFF(MAX(DATE(s.sale_date)), MIN(DATE(s.sale_date))) + 1 AS span_days
+           CAST(ROUND(julianday(MAX(DATE(s.sale_date))) - julianday(MIN(DATE(s.sale_date)))) AS INTEGER) + 1 AS span_days
     FROM sale_items si
     JOIN products p ON p.product_id = si.product_id
     JOIN sales s ON s.sale_id = si.sale_id
@@ -816,10 +755,10 @@ ORDER BY days_with_sales ASC;
 -- ############################################################################
 
 -- 11.1  Products needing restock with priority ranking
-WITH RECURSIVE date_series AS (
-    SELECT DATE_SUB(CURDATE(), INTERVAL 30 DAY) AS dt
+WITH RECURSIVE date_series(dt) AS (
+    SELECT DATE('now', '-30 days')
     UNION ALL
-    SELECT DATE_ADD(dt, INTERVAL 1 DAY) FROM date_series WHERE dt < CURDATE()
+    SELECT DATE(dt, '+1 day') FROM date_series WHERE dt < DATE('now')
 ),
 daily_sales AS (
     SELECT DATE(s.sale_date) AS sale_day,
@@ -828,7 +767,7 @@ daily_sales AS (
     FROM sale_items si
     JOIN sales s ON s.sale_id = si.sale_id
     WHERE s.status = 'completed'
-      AND s.sale_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      AND DATE(s.sale_date) >= DATE('now', '-30 days')
     GROUP BY DATE(s.sale_date), si.product_id
 ),
 restock_calc AS (
@@ -837,15 +776,15 @@ restock_calc AS (
            COALESCE(s.supplier_name, 'N/A') AS supplier_name,
            COALESCE(s.lead_time_days, 3) AS lead_time_days,
            COALESCE(
-               SUM(CASE WHEN ds.dt >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7,
+               SUM(CASE WHEN ds.dt >= DATE('now', '-7 days')
+                        THEN COALESCE(dl.qty_sold, 0) ELSE 0 END) / 7.0,
                0) AS avg_daily_7d,
            p.expiry_date
     FROM products p
     LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
     CROSS JOIN date_series ds
     LEFT JOIN daily_sales dl ON dl.product_id = p.product_id AND dl.sale_day = ds.dt
-    WHERE p.is_active = TRUE
+    WHERE p.is_active = 1
     GROUP BY p.product_id, p.product_name, p.sku, p.unit,
              p.current_stock, p.min_stock_level, p.cost_price,
              s.supplier_name, s.lead_time_days, p.expiry_date
@@ -856,22 +795,18 @@ SELECT product_id, product_name, sku, unit,
        ROUND(avg_daily_7d, 3) AS avg_daily_demand,
        lead_time_days,
        supplier_name,
-       -- Days of stock remaining
        CASE WHEN avg_daily_7d > 0
             THEN ROUND(current_stock / avg_daily_7d, 1)
             ELSE 9999
        END AS days_of_stock_left,
-       -- Suggested order
-       GREATEST(0, ROUND(
+       MAX(0, ROUND(
            (avg_daily_7d * 7 * 1.25)
          + (avg_daily_7d * lead_time_days)
          - current_stock, 3)) AS suggested_order_qty,
-       -- Estimated cost
-       ROUND(GREATEST(0,
+       ROUND(MAX(0,
            (avg_daily_7d * 7 * 1.25)
          + (avg_daily_7d * lead_time_days)
          - current_stock) * cost_price, 2) AS estimated_cost,
-       -- Priority ranking
        CASE
            WHEN current_stock = 0 THEN '🔴 CRITICAL — OUT OF STOCK'
            WHEN current_stock < min_stock_level THEN '🟠 HIGH — BELOW REORDER POINT'
@@ -892,49 +827,165 @@ ORDER BY
     END,
     current_stock ASC;
 
--- ============================================================================
--- LIMITATIONS OF MOVING AVERAGE FORECASTING
--- ============================================================================
-/*
-  IMPORTANT — READ THIS SECTION
-  ==============================
+-- ############################################################################
+-- SECTION 12: CASH PAYMENTS & CASH DRAWER RECONCILIATION (NEW SCHEMA)
+-- ############################################################################
 
-  The SQL-based forecasting in this module uses Simple Moving Averages (SMA).
-  This is a STATISTICAL method, NOT machine learning. Key limitations:
+-- 12.1  Shift-wise Cash Drawer Summary (uses view)
+SELECT * FROM vw_cashier_cash_register;
 
-  1. NO SEASONALITY DETECTION
-     Moving averages cannot detect weekly, monthly, or festival-season
-     patterns. Sales spike during Diwali/Eid will not be predicted.
+-- 12.2  Detailed Cash Log with Customer and Cashier Information
+SELECT cp.cash_payment_id,
+       s.invoice_number,
+       cp.payment_time,
+       s.customer_name,
+       u.full_name AS cashier_name,
+       cp.amount_tendered,
+       cp.amount_received,
+       cp.change_returned,
+       cp.denomination_breakdown,
+       cp.payment_status
+FROM cash_payments cp
+JOIN sales s ON s.sale_id = cp.sale_id
+JOIN app_users u ON u.user_id = cp.cashier_id
+ORDER BY cp.payment_time DESC;
 
-  2. STOCKOUT BIAS
-     If a product was out of stock for 5 days, those 5 days show zero sales.
-     The moving average treats this as "no demand" when in reality demand
-     existed but could not be fulfilled. This underestimates true demand.
+-- 12.3  High-Value Cash Bills (bills >= ₹500 paid in cash)
+SELECT s.invoice_number,
+       cp.payment_time,
+       s.customer_name,
+       cp.amount_received,
+       cp.amount_tendered,
+       cp.change_returned,
+       cp.denomination_breakdown
+FROM cash_payments cp
+JOIN sales s ON s.sale_id = cp.sale_id
+WHERE cp.amount_received >= 500.00
+  AND cp.payment_status = 'completed'
+ORDER BY cp.amount_received DESC;
 
-  3. EQUAL WEIGHTING
-     A 7-day SMA gives equal weight to each of the 7 days. More recent days
-     might be more indicative of current trends. An Exponential Moving
-     Average (EMA) or ML model would handle this better.
+-- 12.4  Total Change Returned by Day (Coin and small note requirements)
+SELECT DATE(cp.payment_time) AS payment_date,
+       COUNT(*) AS total_cash_sales,
+       ROUND(SUM(cp.amount_received), 2) AS cash_intake,
+       ROUND(SUM(cp.change_returned), 2) AS total_change_dispensed,
+       ROUND(AVG(cp.change_returned), 2) AS avg_change_per_bill
+FROM cash_payments cp
+WHERE cp.payment_status = 'completed'
+GROUP BY DATE(cp.payment_time)
+ORDER BY payment_date DESC;
 
-  4. NO EXTERNAL FACTORS
-     Price changes, promotions, weather, nearby competitor opening — none
-     of these are considered.
+-- 12.5  Cancelled / Refunded Cash Transactions
+SELECT cp.cash_payment_id,
+       s.invoice_number,
+       cp.payment_time,
+       u.full_name AS cashier_name,
+       cp.amount_received AS refunded_cash,
+       cp.notes
+FROM cash_payments cp
+JOIN sales s ON s.sale_id = cp.sale_id
+JOIN app_users u ON u.user_id = cp.cashier_id
+WHERE cp.payment_status IN ('cancelled', 'refunded')
+ORDER BY cp.payment_time DESC;
 
-  5. NEW PRODUCTS
-     Products with fewer than 7 days of sales history will have unreliable
-     7-day averages. The confidence_score reflects this.
+-- ############################################################################
+-- SECTION 13: ONLINE PAYMENTS & DIGITAL SETTLEMENTS (NEW SCHEMA)
+-- ############################################################################
 
-  DIFFERENCE FROM LOW-STOCK ALERTS:
-  - A low-stock alert simply checks: current_stock < min_stock_level
-    This is a static rule-based check.
-  - Demand forecasting PREDICTS future demand using historical sales data
-    and calculates how much stock WILL be needed, accounting for lead time
-    and safety stock.
+-- 13.1  Digital Transaction Log (UPI & POS Cards)
+SELECT op.online_payment_id,
+       s.invoice_number,
+       op.payment_time,
+       op.payment_platform,
+       op.provider,
+       op.transaction_reference_id,
+       op.amount,
+       op.payer_upi_id,
+       op.payer_phone,
+       op.payment_status,
+       op.settlement_status,
+       op.terminal_device_id
+FROM online_payments op
+JOIN sales s ON s.sale_id = op.sale_id
+ORDER BY op.payment_time DESC;
 
-  The AI team should replace these SQL forecasts with ML models (e.g.,
-  ARIMA, Prophet, XGBoost) for better accuracy. The ai_insights table
-  supports both via the generated_by column ('sql_procedure' vs 'ml_model').
-*/
+-- 13.2  Provider Market Share (PhonePe vs Google Pay vs Paytm vs Pine Labs)
+SELECT op.provider,
+       op.payment_platform,
+       COUNT(*) AS transaction_count,
+       ROUND(SUM(op.amount), 2) AS total_processed,
+       ROUND(100.0 * SUM(op.amount) / (SELECT SUM(amount) FROM online_payments WHERE payment_status = 'success'), 2) AS share_pct,
+       ROUND(SUM(op.gateway_fee), 2) AS total_gateway_fees,
+       ROUND(SUM(op.amount) - SUM(op.gateway_fee), 2) AS net_settlement_amount
+FROM online_payments op
+WHERE op.payment_status = 'success'
+GROUP BY op.provider, op.payment_platform
+ORDER BY total_processed DESC;
+
+-- 13.3  UPI vs Card POS Breakdown
+SELECT op.payment_platform,
+       COUNT(*) AS transaction_count,
+       ROUND(SUM(op.amount), 2) AS total_volume,
+       ROUND(AVG(op.amount), 2) AS avg_ticket_size,
+       ROUND(SUM(op.gateway_fee), 2) AS total_charges
+FROM online_payments op
+WHERE op.payment_status = 'success'
+GROUP BY op.payment_platform
+ORDER BY total_volume DESC;
+
+-- 13.4  Search Online Payment by Transaction Reference ID or UPI ID
+SELECT op.online_payment_id,
+       s.invoice_number,
+       s.customer_name,
+       op.payment_platform,
+       op.provider,
+       op.transaction_reference_id,
+       op.amount,
+       op.payer_upi_id,
+       op.payment_status,
+       op.payment_time
+FROM online_payments op
+JOIN sales s ON s.sale_id = op.sale_id
+WHERE op.transaction_reference_id LIKE '%20260718%'
+   OR op.payer_upi_id LIKE '%ybl%';
+
+-- ############################################################################
+-- SECTION 14: UNIFIED PAYMENT RECONCILIATION (CASH VS DIGITAL)
+-- ############################################################################
+
+-- 14.1  Daily Payment Breakdown (uses view)
+SELECT * FROM vw_daily_payment_breakdown
+LIMIT 30;
+
+-- 14.2  Bill-Level Payment Reconciliation Check
+-- Confirms that billed amount strictly equals cash received + online payment
+SELECT s.invoice_number,
+       s.sale_date,
+       s.net_amount AS bill_total,
+       COALESCE(cp.amount_received, 0.0) AS cash_amount,
+       COALESCE(op.amount, 0.0) AS online_amount,
+       ROUND(COALESCE(cp.amount_received, 0.0) + COALESCE(op.amount, 0.0), 2) AS total_paid,
+       ROUND(s.net_amount - (COALESCE(cp.amount_received, 0.0) + COALESCE(op.amount, 0.0)), 2) AS reconciliation_diff,
+       CASE
+           WHEN ABS(s.net_amount - (COALESCE(cp.amount_received, 0.0) + COALESCE(op.amount, 0.0))) < 0.01
+           THEN '✅ MATCH'
+           ELSE '❌ MISMATCH'
+       END AS audit_status
+FROM sales s
+LEFT JOIN cash_payments cp ON cp.sale_id = s.sale_id AND cp.payment_status = 'completed'
+LEFT JOIN online_payments op ON op.sale_id = s.sale_id AND op.payment_status = 'success'
+WHERE s.status = 'completed'
+ORDER BY s.sale_date DESC;
+
+-- 14.3  Overall Digital Adoption Rate across Kirana Store
+SELECT
+    COUNT(s.sale_id) AS total_sales_count,
+    ROUND(SUM(s.net_amount), 2) AS total_revenue,
+    ROUND(SUM(CASE WHEN s.payment_method = 'cash' THEN s.net_amount ELSE 0 END), 2) AS cash_revenue,
+    ROUND(SUM(CASE WHEN s.payment_method IN ('upi', 'card', 'online') THEN s.net_amount ELSE 0 END), 2) AS digital_revenue,
+    ROUND(100.0 * SUM(CASE WHEN s.payment_method IN ('upi', 'card', 'online') THEN s.net_amount ELSE 0 END) / SUM(s.net_amount), 2) AS digital_adoption_pct
+FROM sales s
+WHERE s.status = 'completed';
 
 -- ============================================================================
 -- END OF QUERIES
