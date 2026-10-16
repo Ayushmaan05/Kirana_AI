@@ -1,0 +1,108 @@
+{
+  "name": "kirana_tools",
+  "version": "1.0.0",
+  "dialect": "sqlite",
+  "db": "database/kirana_store.db",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "query_database",
+        "description": "Run read-only SQLite SELECT against kirana_store.db",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "sql": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          "required": [
+            "sql"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_product",
+        "description": "Search products by name or SKU",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "q"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_low_stock",
+        "description": "Low stock reorder alerts",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_daily_summary",
+        "description": "Daily sales summary",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_payment_breakdown",
+        "description": "Cash vs UPI split",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_expiry_alerts",
+        "description": "Expiring products",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
