@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Bell, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
+import LanguageToggle from '../LanguageToggle.jsx';
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
@@ -49,6 +50,7 @@ export default function Header() {
 
       {/* Right: search + notifications + avatar */}
       <div className="flex items-center gap-2">
+        <LanguageToggle className="hidden sm:inline-flex" />
         <button
           className="hidden sm:flex btn btn-ghost btn-icon text-slate-400 hover:text-slate-600"
           aria-label="Search"

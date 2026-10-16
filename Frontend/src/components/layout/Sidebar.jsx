@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.jsx';
 import apiClient from '../../services/apiClient.js';
+import LanguageToggle from '../LanguageToggle.jsx';
 
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
@@ -98,6 +99,7 @@ export default function Sidebar() {
 
         {/* Demo mode badge */}
         <div className="px-5 py-4 border-t border-white/10">
+          <div className="mb-3"><LanguageToggle dark /></div>
           <div
             className="flex items-center gap-2 px-3 py-2 rounded-xl"
             style={{ background: 'rgba(16,185,129,0.15)' }}
